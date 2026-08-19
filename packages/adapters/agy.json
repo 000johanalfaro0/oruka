@@ -1,0 +1,19 @@
+{
+  "id": "agy",
+  "name": "Agy",
+  "icon": "sparkle",
+  "detect": { "bin": "agy", "versionArgs": ["--version"] },
+  "launch": { "args": [], "cwd": "flag", "cwdFlag": "--add-dir" },
+  "modes": {
+    "default": [],
+    "yolo": ["--dangerously-skip-permissions"],
+    "plan": ["--mode", "plan"],
+    "acceptEdits": ["--mode", "accept-edits"]
+  },
+  "resume": ["--continue"],
+  "prompt": { "via": "arg", "flag": "--prompt-interactive" },
+  "mcp": {
+    "format": "unsupported",
+    "note": "agy no expone subcomando mcp ni config conocida. Pendiente de spike (M4). Hasta entonces la UI debe mostrar 'MCP no soportado', no fingir que funciona."
+  }
+}

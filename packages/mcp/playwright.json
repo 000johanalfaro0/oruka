@@ -1,0 +1,8 @@
+{
+  "id": "playwright",
+  "name": "Playwright",
+  "description": "Control de navegador para probar paginas.",
+  "command": "npx",
+  "args": ["-y", "@playwright/mcp@latest"],
+  "requiresEnv": []
+}

@@ -1,0 +1,343 @@
+//! Nucleo de Oruka.
+//!
+//! Cada capacidad vive detras de un modulo con una superficie estrecha de
+//! comandos. El front nunca habla con procesos, ficheros de configuracion ni
+//! con la red: siempre a traves de uno de estos comandos.
+
+mod github;
+mod mcp;
+mod ports;
+mod projects;
+mod pty;
+pub mod registry;
+mod store;
+
+use std::path::PathBuf;
+use std::sync::Arc;
+use tauri::{AppHandle, State};
+
+use pty::{PtyManager, SharedPty};
+use registry::DetectedCli;
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .manage(Arc::new(PtyManager::default()))
+        .invoke_handler(tauri::generate_handler![
+            app_version,
+            store_get,
+            store_set,
+            store_remove,
+            store_seed,
+            detect_clis,
+            github_status,
+            github_repos,
+            github_repo_for_path,
+            github_prs,
+            github_collaborators,
+            github_invitations,
+            github_respond_invitation,
+            github_invite,
+            github_remove_collaborator,
+            github_sent_invitations,
+            github_cancel_invitation,
+            github_open_url,
+            reveal_in_explorer,
+            save_prompt,
+            mcp_catalog,
+            mcp_state,
+            mcp_preview,
+            mcp_apply,
+            mcp_revert,
+            list_projects,
+            agent_spawn,
+            agent_write,
+            agent_resize,
+            agent_kill,
+            agent_scrollback,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error al arrancar Oruka");
+}
+
+#[tauri::command]
+fn app_version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
+}
+
+/// Estado que sobrevive al cierre: sesion, setup y carpetas de trabajo.
+///
+/// Va a disco y no al navegador porque `localStorage` esta indexado por origen,
+/// y el de Oruka cambia entre la app de desarrollo y la empaquetada.
+#[tauri::command]
+fn store_get(app: AppHandle, key: String) -> Result<Option<String>, String> {
+    store::get(&app, &key)
+}
+
+#[tauri::command]
+fn store_set(app: AppHandle, key: String, value: String) -> Result<(), String> {
+    store::set(&app, &key, &value)
+}
+
+#[tauri::command]
+fn store_remove(app: AppHandle, key: String) -> Result<(), String> {
+    store::remove(&app, &key)
+}
+
+/// Mudanza desde el `localStorage` de una version anterior.
+///
+/// No pisa lo que ya haya en disco. Devuelve cuantas claves se rescataron.
+#[tauri::command]
+fn store_seed(app: AppHandle, entries: Vec<(String, String)>) -> Result<u32, String> {
+    store::seed(&app, entries)
+}
+
+#[tauri::command]
+fn detect_clis() -> Vec<DetectedCli> {
+    registry::detect_all()
+}
+
+#[tauri::command]
+fn list_projects(root: String) -> Result<Vec<projects::ProjectEntry>, String> {
+    projects::discover(&PathBuf::from(root))
+}
+
+/// Lanza un agente en el directorio del proyecto, con el modo de permisos pedido.
+#[tauri::command]
+fn agent_spawn(
+    app: AppHandle,
+    manager: State<'_, SharedPty>,
+    id: String,
+    cli_id: String,
+    cwd: String,
+    mode: String,
+    cols: u16,
+    rows: u16,
+    prompt: Option<String>,
+) -> Result<(), String> {
+    let manifest = registry::manifest(&cli_id).ok_or("CLI desconocido")?;
+    let program = registry::resolve_bin(&manifest.detect.bin)
+        .ok_or_else(|| format!("{} no esta instalado o no esta en el PATH", manifest.name))?;
+
+    let cwd_path = PathBuf::from(&cwd);
+    let mut args = manifest.launch.args.clone();
+
+    // Los modos son datos del manifiesto, no ramas de codigo por CLI.
+    if let Some(mode_args) = manifest.modes.get(&mode) {
+        args.extend(mode_args.clone());
+    }
+
+    // Cada CLI recibe el directorio a su manera.
+    match manifest.launch.cwd.as_str() {
+        "flag" => {
+            if let Some(flag) = &manifest.launch.cwd_flag {
+                args.push(flag.clone());
+                args.push(cwd.clone());
+            }
+        }
+        "positional" => args.push(cwd.clone()),
+        _ => {}
+    }
+
+    // El prompt inicial se entrega como diga el manifiesto. Va corto a
+    // proposito: el texto largo viaja en un archivo y aqui solo se referencia,
+    // porque Windows corta la linea de comandos sobre los 32 KB.
+    if let (Some(text), Some(spec)) = (prompt.as_ref(), manifest.prompt.as_ref()) {
+        match spec.via.as_str() {
+            "arg" => {
+                if let Some(flag) = &spec.flag {
+                    args.push(flag.clone());
+                    args.push(text.clone());
+                }
+            }
+            "positional" => args.push(text.clone()),
+            "subcommand" => {
+                if let Some(sub) = &spec.subcommand {
+                    args.insert(0, sub.clone());
+                }
+                args.push(text.clone());
+            }
+            _ => {}
+        }
+    }
+
+    manager.spawn(app, id, &program, &args, &cwd_path, cols, rows)
+}
+
+#[tauri::command]
+fn agent_write(manager: State<'_, SharedPty>, id: String, data: String) -> Result<(), String> {
+    manager.write(&id, &data)
+}
+
+#[tauri::command]
+fn agent_resize(
+    manager: State<'_, SharedPty>,
+    id: String,
+    cols: u16,
+    rows: u16,
+) -> Result<(), String> {
+    manager.resize(&id, cols, rows)
+}
+
+#[tauri::command]
+fn agent_kill(manager: State<'_, SharedPty>, id: String) -> Result<(), String> {
+    manager.kill(&id)
+}
+
+/// La salida reciente de un agente, para repintarla al volver a su pestana.
+///
+/// `None` si la sesion no esta viva. El `seq` que acompana a la foto es lo que
+/// permite al front tirar los trozos que ya venian dentro de ella.
+#[tauri::command]
+fn agent_scrollback(manager: State<'_, SharedPty>, id: String) -> Option<pty::Snapshot> {
+    manager.scrollback(&id)
+}
+
+#[tauri::command]
+fn github_status() -> github::GithubStatus {
+    github::status()
+}
+
+/// Repos del usuario. `shared` son en los que solo colabora.
+#[tauri::command]
+fn github_repos(shared: bool) -> Result<Vec<github::Repo>, String> {
+    github::repos(shared)
+}
+
+/// A que repo apunta el `origin` de una carpeta. `None` si no apunta a GitHub.
+#[tauri::command]
+fn github_repo_for_path(path: String) -> Option<String> {
+    github::repo_for_path(std::path::Path::new(&path))
+}
+
+#[tauri::command]
+fn github_prs(repo: String, filter: String) -> Result<Vec<github::PullRequest>, String> {
+    github::pull_requests(&repo, github::PrFilter::from_id(&filter))
+}
+
+#[tauri::command]
+fn github_collaborators(repo: String) -> Result<Vec<github::Collaborator>, String> {
+    github::collaborators(&repo)
+}
+
+#[tauri::command]
+fn github_invitations() -> Result<Vec<github::Invitation>, String> {
+    github::invitations()
+}
+
+/// Acepta o rechaza una invitacion. Se ve desde fuera: el front pregunta antes.
+#[tauri::command]
+fn github_respond_invitation(id: u64, accept: bool) -> Result<(), String> {
+    github::respond_invitation(id, accept)
+}
+
+/// Invita a alguien a colaborar, o le cambia el permiso si ya estaba.
+///
+/// Manda un correo a esa persona: la interfaz pregunta antes de llamar aqui.
+#[tauri::command]
+fn github_invite(repo: String, login: String, permission: String) -> Result<(), String> {
+    github::invite_collaborator(&repo, &login, &permission)
+}
+
+#[tauri::command]
+fn github_remove_collaborator(repo: String, login: String) -> Result<(), String> {
+    github::remove_collaborator(&repo, &login)
+}
+
+/// Invitaciones enviadas desde un repo que siguen sin contestar.
+#[tauri::command]
+fn github_sent_invitations(repo: String) -> Result<Vec<github::SentInvitation>, String> {
+    github::sent_invitations(&repo)
+}
+
+#[tauri::command]
+fn github_cancel_invitation(repo: String, id: u64) -> Result<(), String> {
+    github::cancel_invitation(&repo, id)
+}
+
+/// Abre un enlace de GitHub en el navegador del sistema.
+///
+/// Solo GitHub a proposito: es una superficie estrecha por la que el front pide
+/// abrir cosas, y no tiene por que servir para abrir cualquier URL.
+#[tauri::command]
+fn github_open_url(url: String) -> Result<(), String> {
+    if !url.starts_with("https://github.com/") {
+        return Err("solo se abren enlaces de github.com".into());
+    }
+    let (program, args): (&str, Vec<&str>) = if cfg!(windows) {
+        // `start` es interno de cmd, y el primer argumento entre comillas seria
+        // el titulo de la ventana: por eso va uno vacio antes de la URL.
+        ("cmd", vec!["/C", "start", ""])
+    } else if cfg!(target_os = "macos") {
+        ("open", vec![])
+    } else {
+        ("xdg-open", vec![])
+    };
+    std::process::Command::new(program)
+        .args(args)
+        .arg(&url)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| format!("no se pudo abrir el navegador: {e}"))
+}
+
+#[tauri::command]
+fn mcp_catalog() -> Vec<mcp::McpServer> {
+    mcp::catalog()
+}
+
+#[tauri::command]
+fn mcp_state(cli_ids: Vec<String>) -> Vec<mcp::CliMcpState> {
+    mcp::state(&cli_ids)
+}
+
+/// Diff de lo que pasaria. No toca nada.
+#[tauri::command]
+fn mcp_preview(cli_id: String, server: mcp::McpServer, remove: bool) -> Result<String, String> {
+    mcp::preview(&cli_id, &server, remove)
+}
+
+/// Aplica el cambio. Devuelve la ruta de la copia de seguridad.
+#[tauri::command]
+fn mcp_apply(cli_id: String, server: mcp::McpServer, remove: bool) -> Result<String, String> {
+    mcp::apply(&cli_id, &server, remove)
+}
+
+#[tauri::command]
+fn mcp_revert(cli_id: String) -> Result<String, String> {
+    mcp::revert(&cli_id)
+}
+
+/// Abre una carpeta en el explorador de archivos del sistema.
+#[tauri::command]
+fn reveal_in_explorer(path: String) -> Result<(), String> {
+    let program = if cfg!(windows) {
+        "explorer"
+    } else if cfg!(target_os = "macos") {
+        "open"
+    } else {
+        "xdg-open"
+    };
+    std::process::Command::new(program)
+        .arg(&path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| format!("no se pudo abrir el explorador: {e}"))
+}
+
+/// Guarda un prompt largo en un archivo temporal y devuelve su ruta.
+///
+/// El bloc de notas de un proyecto puede pasar de 40 KB, demasiado para la
+/// linea de comandos de Windows. Se escribe a disco y al agente solo se le
+/// pasa la ruta.
+#[tauri::command]
+fn save_prompt(content: String) -> Result<String, String> {
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    let path = std::env::temp_dir().join(format!("oruka-prompt-{stamp}.md"));
+    std::fs::write(&path, content).map_err(|e| format!("no se pudo guardar el prompt: {e}"))?;
+    Ok(path.to_string_lossy().to_string())
+}

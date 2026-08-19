@@ -1,0 +1,18 @@
+{
+  "id": "opencode",
+  "name": "OpenCode",
+  "icon": "code",
+  "detect": { "bin": "opencode", "versionArgs": ["--version"] },
+  "launch": { "args": [], "cwd": "positional" },
+  "modes": {
+    "default": []
+  },
+  "resume": ["session"],
+  "prompt": { "via": "subcommand", "subcommand": "run" },
+  "mcp": {
+    "format": "opencode-json",
+    "key": "mcp",
+    "cli": ["mcp", "add"]
+  },
+  "todo": "Confirmar flag de permisos y ruta exacta de config global (M1)."
+}

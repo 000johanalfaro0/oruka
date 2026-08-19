@@ -1,0 +1,123 @@
+import { invoke } from '@tauri-apps/api/core'
+
+/**
+ * Puente con GitHub.
+ *
+ * Todo pasa por `gh` en el backend: el front no habla HTTP ni ve el token. Si
+ * algun dia se cambia `gh` por otra cosa, se cambia el lado Rust y esto sigue
+ * igual.
+ */
+
+export interface GithubStatus {
+  installed: boolean
+  authenticated: boolean
+  user: string | null
+  scopes: string[]
+  message: string | null
+}
+
+export interface Repo {
+  name_with_owner: string
+  description: string | null
+  private: boolean
+  fork: boolean
+  url: string
+  updated_at: string
+  /** ADMIN, WRITE, READ... */
+  permission: string | null
+}
+
+export interface PullRequest {
+  number: number
+  title: string
+  author: string
+  url: string
+  draft: boolean
+  review_decision: string | null
+  updated_at: string
+  branch: string
+}
+
+export interface Collaborator {
+  login: string
+  url: string
+  permission: string | null
+}
+
+export interface Invitation {
+  id: number
+  repo: string
+  inviter: string
+  permission: string
+  url: string
+}
+
+/** Los filtros del panel de PR. El backend entiende estos mismos ids. */
+export type PrFilter = 'all' | 'mine' | 'assigned' | 'review'
+
+export const githubStatus = () => invoke<GithubStatus>('github_status')
+
+/** `shared` son los repos en los que solo se colabora. */
+export const githubRepos = (shared: boolean) => invoke<Repo[]>('github_repos', { shared })
+
+/** A que repo apunta el `origin` de una carpeta. `null` si no es de GitHub. */
+export const githubRepoForPath = (path: string) =>
+  invoke<string | null>('github_repo_for_path', { path })
+
+export const githubPrs = (repo: string, filter: PrFilter) =>
+  invoke<PullRequest[]>('github_prs', { repo, filter })
+
+export const githubCollaborators = (repo: string) =>
+  invoke<Collaborator[]>('github_collaborators', { repo })
+
+export const githubInvitations = () => invoke<Invitation[]>('github_invitations')
+
+/** Acepta o rechaza una invitacion. Se ve desde fuera: preguntar antes. */
+export const githubRespondInvitation = (id: number, accept: boolean) =>
+  invoke<void>('github_respond_invitation', { id, accept })
+
+/** Una invitacion enviada desde un repo que sigue sin contestar. */
+export interface SentInvitation {
+  id: number
+  invitee: string
+  permission: string
+  created_at: string
+  url: string
+}
+
+/**
+ * Los niveles de acceso de GitHub, en el orden en que crecen.
+ *
+ * Los ids son los que entiende la API; las etiquetas, lo que entiende una
+ * persona. El backend valida contra esta misma lista.
+ */
+export const PERMISOS = [
+  { id: 'pull', label: 'Lectura', hint: 'Ver y clonar' },
+  { id: 'triage', label: 'Clasificar', hint: 'Además gestionar issues y PR' },
+  { id: 'push', label: 'Escritura', hint: 'Además subir cambios' },
+  { id: 'maintain', label: 'Mantener', hint: 'Además ajustes del repositorio' },
+  { id: 'admin', label: 'Administrar', hint: 'Control total, incluido el acceso' },
+] as const
+
+export type Permiso = (typeof PERMISOS)[number]['id']
+
+/**
+ * Invita a alguien, o le cambia el permiso si ya colaboraba.
+ *
+ * Le llega un correo: preguntar antes de llamar.
+ */
+export const githubInvite = (repo: string, login: string, permission: Permiso) =>
+  invoke<void>('github_invite', { repo, login, permission })
+
+/** Le quita el acceso a alguien. Preguntar antes. */
+export const githubRemoveCollaborator = (repo: string, login: string) =>
+  invoke<void>('github_remove_collaborator', { repo, login })
+
+export const githubSentInvitations = (repo: string) =>
+  invoke<SentInvitation[]>('github_sent_invitations', { repo })
+
+export const githubCancelInvitation = (repo: string, id: number) =>
+  invoke<void>('github_cancel_invitation', { repo, id })
+
+/** Abre un enlace de GitHub en el navegador del sistema. */
+export const githubOpenUrl = (url: string) => invoke<void>('github_open_url', { url })

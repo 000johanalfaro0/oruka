@@ -1,0 +1,8 @@
+{
+  "id": "github",
+  "name": "GitHub",
+  "description": "Repos, issues y pull requests desde el agente.",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-github"],
+  "requiresEnv": ["GITHUB_PERSONAL_ACCESS_TOKEN"]
+}

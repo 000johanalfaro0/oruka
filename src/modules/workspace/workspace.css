@@ -1,0 +1,230 @@
+.ws-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 10px;
+  color: var(--fg-dim);
+}
+
+.ws-empty .codicon { font-size: 44px; color: var(--fg-dim); }
+.ws-empty__text { margin: 0; font-size: var(--fs-md); color: var(--fg-muted); }
+.ws-empty__hint { margin: 0; font-size: var(--fs-xs); color: var(--fg-dim); }
+
+.ws-empty__action {
+  padding: 5px 14px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-radius: var(--radius);
+  font-size: var(--fs-sm);
+}
+.ws-empty__action:disabled { opacity: 0.5; cursor: default; }
+
+.ws-tabs {
+  display: flex;
+  align-items: stretch;
+  height: var(--h-tabs);
+  background: var(--bg-chrome);
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+  overflow-x: auto;
+}
+
+.ws-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 12px;
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ws-tab:hover { background: var(--hover); }
+
+.ws-tab.is-active {
+  background: var(--bg-editor);
+  color: var(--fg);
+  box-shadow: inset 0 1px 0 0 var(--accent);
+}
+
+.ws-tab__close { display: flex; opacity: 0.6; }
+.ws-tab__close:hover { opacity: 1; }
+
+.ws-tab__add { padding: 0 10px; color: var(--fg-muted); }
+.ws-tab__add:hover { background: var(--hover); color: var(--fg); }
+
+.ws-picker { padding: 16px; }
+.ws-picker__title { margin: 0 0 10px; font-size: var(--fs-lg); font-weight: 600; }
+.ws-picker__list { list-style: none; margin: 0; padding: 0; }
+
+.ws-picker__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 8px;
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+  border-radius: var(--radius);
+}
+.ws-picker__item:hover { background: var(--hover); color: var(--fg); }
+
+/* --- Barra del proyecto activo --- */
+.grid-wrap { display: flex; flex-direction: column; height: 100%; }
+
+.grid-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+  height: 28px;
+  background: var(--bg-chrome);
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+.grid-bar__path {
+  font-size: var(--fs-xs);
+  color: var(--fg-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.grid-bar__count { font-size: var(--fs-xs); color: var(--fg-dim); }
+.grid-bar__actions { position: relative; }
+
+.grid-bar__add {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+  border-radius: var(--radius);
+}
+.grid-bar__add:hover:not(:disabled) { background: var(--hover); color: var(--fg); }
+.grid-bar__add:disabled { opacity: 0.4; cursor: default; }
+
+/* --- Selector de agente --- */
+.picker {
+  position: absolute;
+  right: 0;
+  top: 24px;
+  z-index: 20;
+  min-width: 230px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.picker__group { padding: 5px 6px; }
+.picker__name { display: block; font-size: var(--fs-sm); color: var(--fg); margin-bottom: 4px; }
+.picker__modes { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.picker__mode {
+  padding: 2px 8px;
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+  background: var(--bg-input);
+  border-radius: var(--radius);
+}
+.picker__mode:hover { background: var(--accent); color: var(--accent-fg); }
+
+.picker__empty { padding: 8px; font-size: var(--fs-xs); color: var(--fg-dim); }
+
+/* --- Rejilla de agentes --- */
+.grid { flex: 1 1 auto; min-height: 0; display: grid; gap: 1px; background: var(--border); }
+.grid[data-count="1"] { grid-template-columns: 1fr; }
+.grid[data-count="2"] { grid-template-columns: 1fr 1fr; }
+.grid[data-count="3"] { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.grid[data-count="3"] > .panel:first-child { grid-row: span 2; }
+.grid[data-count="4"] { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+
+.panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--bg-editor); }
+
+.panel__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  height: 24px;
+  background: var(--bg-chrome);
+  flex: 0 0 auto;
+}
+
+.panel__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--state-idle); }
+.panel__title { font-size: var(--fs-xs); color: var(--fg); }
+.panel__mode { font-size: var(--fs-xs); color: var(--fg-dim); flex: 1; }
+.panel__close { color: var(--fg-dim); display: flex; }
+.panel__close:hover { color: var(--state-error); }
+.panel__close .codicon { font-size: 13px; }
+
+/* --- Terminal --- */
+/* La terminal ocupa lo que sobra del panel, no la capa entera. Con position
+   absolute se escapaba hasta tapar la barra del proyecto y las cabeceras. */
+.agent-term__host {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  padding: 4px 6px;
+}
+.agent-term__error { position: absolute; bottom: 4px; left: 8px; font-size: var(--fs-xs); color: var(--state-error); }
+
+.grid-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--fg-dim);
+}
+.grid-empty .codicon { font-size: 36px; }
+.grid-empty p { margin: 0; font-size: var(--fs-sm); color: var(--fg-muted); }
+.grid-empty__hint { font-size: var(--fs-xs) !important; color: var(--fg-dim) !important; }
+
+/* --- Selector de proyecto --- */
+.ws-picker__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.ws-picker__addroot { display: flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--fg-muted); padding: 3px 8px; border-radius: var(--radius); }
+.ws-picker__addroot:hover { background: var(--hover); color: var(--fg); }
+.ws-picker__empty { font-size: var(--fs-sm); color: var(--fg-dim); padding: 4px 8px; }
+.ws-empty__error { margin: 0; font-size: var(--fs-xs); color: var(--state-error); }
+
+.ws-tab__agents {
+  min-width: 15px;
+  padding: 0 4px;
+  font-size: 10px;
+  text-align: center;
+  color: var(--accent-fg);
+  background: var(--accent);
+  border-radius: 7px;
+}
+
+/* Capas: todos los proyectos montados, solo uno visible. Ocultar en vez de
+   desmontar es lo que mantiene vivas las terminales al cambiar de pestana. */
+.ws-stack { position: relative; height: 100%; }
+.ws-layer { position: absolute; inset: 0; }
+.ws-layer[hidden] { display: none; }
+
+.ws-roots { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border); }
+.ws-roots__label { font-size: var(--fs-xs); color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.4px; }
+.ws-root { display: inline-flex; align-items: center; gap: 5px; padding: 2px 4px 2px 7px; font-size: var(--fs-xs); font-family: var(--font-mono); color: var(--fg-muted); background: var(--bg-elevated); border: 1px solid var(--border-strong); border-radius: var(--radius); }
+.ws-root .codicon { font-size: 12px; }
+.ws-root__count { padding: 0 5px; font-family: var(--font-ui); color: var(--accent-fg); background: var(--accent); border-radius: 7px; }
+.ws-root__remove { display: flex; color: var(--fg-dim); }
+.ws-root__remove:hover { color: var(--state-error); }
+.ws-picker__error { margin: 10px 0 0; font-size: var(--fs-xs); color: var(--state-error); word-break: break-all; }
+
+.ws-root__open { display: inline-flex; align-items: center; gap: 5px; font-size: inherit; font-family: inherit; color: inherit; }
+.ws-root__open:hover { color: var(--accent); }

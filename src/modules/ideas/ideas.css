@@ -1,0 +1,167 @@
+.ideas { display: flex; flex-direction: column; height: 100%; }
+
+.ideas__switch {
+  display: flex;
+  gap: 2px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-chrome);
+  flex: 0 0 auto;
+}
+.ideas__switch-item { padding: 3px 12px; font-size: var(--fs-sm); color: var(--fg-muted); border-radius: var(--radius); }
+.ideas__switch-item:hover { background: var(--hover); color: var(--fg); }
+.ideas__switch-item.is-active { background: var(--bg-elevated); color: var(--fg); }
+
+.ideas__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.ideas__pending { margin: 0; padding: 10px 0; font-size: var(--fs-sm); color: var(--fg-dim); }
+.ideas__error { margin: 8px 16px; font-size: var(--fs-sm); color: var(--state-error); }
+
+/* Chips de estado, con la misma semantica que Idearia */
+.chip { padding: 1px 8px; font-size: var(--fs-xs); border-radius: 9px; white-space: nowrap; }
+.chip--starting { color: var(--fg-muted); background: var(--bg-input); }
+.chip--building { color: #1f1f1f; background: var(--state-building); }
+.chip--done { color: #1f1f1f; background: var(--state-done); }
+
+/* --- Lista de proyectos --- */
+.ipl { padding: 14px 16px; }
+.ipl__head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.ipl__title { margin: 0; font-size: var(--fs-lg); font-weight: 600; flex: 1; }
+.ipl__count { padding: 0 6px; font-size: var(--fs-xs); color: var(--fg-dim); background: var(--bg-elevated); border-radius: 8px; }
+.ipl__add { display: flex; align-items: center; gap: 5px; padding: 4px 10px; font-size: var(--fs-sm); color: var(--fg-muted); border-radius: var(--radius); }
+.ipl__add:hover { background: var(--hover); color: var(--fg); }
+.ipl__new { display: flex; gap: 6px; }
+.ipl__new input { padding: 4px 8px; font: inherit; font-size: var(--fs-sm); color: var(--fg); background: var(--bg-input); border: 1px solid var(--border-strong); border-radius: var(--radius); }
+.ipl__new input:focus { outline: none; border-color: var(--accent); }
+.ipl__new button { padding: 4px 12px; font-size: var(--fs-sm); background: var(--accent); color: var(--accent-fg); border-radius: var(--radius); }
+
+.ipl__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.ipl__item {
+  display: grid;
+  /* Anchos fijos para las dos ultimas: con "auto" cada fila mide lo suyo y las
+     columnas no se alinean entre si, que era justo el problema. */
+  grid-template-columns: 1fr 7.5rem 9rem;
+  grid-template-areas: "name date status" "desc date status";
+  gap: 2px 10px;
+  width: 100%;
+  padding: 7px 10px;
+  text-align: left;
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+}
+.ipl__item:hover { background: var(--hover); }
+.ipl__name { grid-area: name; font-size: var(--fs-md); color: var(--fg); }
+.ipl__desc { grid-area: desc; font-size: var(--fs-xs); color: var(--fg-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ipl__date { grid-area: date; display: flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--fg-dim); font-family: var(--font-mono); }
+.ipl__date .codicon { font-size: 12px; }
+.ipl__status { grid-area: status; display: flex; align-items: center; }
+
+/* --- Detalle --- */
+.ipd { display: flex; flex-direction: column; height: 100%; }
+.ipd__head { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.ipd__back { color: var(--fg-muted); display: flex; }
+.ipd__back:hover { color: var(--fg); }
+.ipd__title { margin: 0; font-size: var(--fs-lg); font-weight: 600; flex: 1; }
+.ipd__status { padding: 3px 6px; font: inherit; font-size: var(--fs-xs); color: var(--fg-muted); background: var(--bg-input); border: 1px solid var(--border-strong); border-radius: var(--radius); }
+.ipd__agent { display: flex; align-items: center; gap: 5px; padding: 4px 12px; font-size: var(--fs-sm); background: var(--accent); color: var(--accent-fg); border-radius: var(--radius); }
+.ipd__agent:hover { filter: brightness(1.1); }
+
+.ipd__tabs { display: flex; align-items: center; gap: 4px; padding: 6px 16px; border-bottom: 1px solid var(--border); background: var(--bg-chrome); }
+.ipd__tab { padding: 3px 12px; font-size: var(--fs-sm); color: var(--fg-muted); border-radius: var(--radius); }
+.ipd__tab:hover { background: var(--hover); color: var(--fg); }
+.ipd__tab.is-active { background: var(--bg-elevated); color: var(--fg); }
+.ipd__spacer { flex: 1; }
+.ipd__action { display: flex; align-items: center; gap: 5px; padding: 3px 10px; font-size: var(--fs-xs); color: var(--fg-muted); border-radius: var(--radius); }
+.ipd__action:hover:not(:disabled) { background: var(--hover); color: var(--fg); }
+.ipd__action:disabled { opacity: 0.4; cursor: default; }
+
+.ipd__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; }
+.ipd__ideas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+.idea { padding: 8px 10px; background: var(--bg-elevated); border-radius: var(--radius); }
+.idea__meta { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: var(--fs-xs); color: var(--fg-dim); }
+.idea__badge { padding: 0 6px; background: var(--bg-input); border-radius: 7px; }
+.idea__del { margin-left: auto; color: var(--fg-dim); display: flex; }
+.idea__del:hover { color: var(--state-error); }
+.idea__text { margin: 0; font-size: var(--fs-sm); color: var(--fg); line-height: 1.55; white-space: pre-wrap; user-select: text; }
+
+.ipd__new { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.ipd__new textarea,
+.ipd__paste textarea {
+  width: 100%;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--fg);
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  resize: vertical;
+}
+.ipd__new textarea:focus,
+.ipd__paste textarea:focus { outline: none; border-color: var(--accent); }
+.ipd__new button { padding: 4px 14px; font-size: var(--fs-sm); background: var(--accent); color: var(--accent-fg); border-radius: var(--radius); }
+.ipd__new button:disabled { opacity: 0.5; cursor: default; }
+
+.ipd__paste { padding: 0 16px; display: flex; flex-direction: column; gap: 6px; }
+.ipd__paste-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.ipd__paste-actions button { padding: 4px 12px; font-size: var(--fs-sm); color: var(--fg-muted); border-radius: var(--radius); }
+.ipd__paste-actions .is-primary { background: var(--accent); color: var(--accent-fg); }
+
+.org { display: flex; flex-direction: column; gap: 12px; user-select: text; }
+.org__summary { margin: 0; font-size: var(--fs-md); color: var(--fg); line-height: 1.55; }
+.org__theme { padding: 10px 12px; background: var(--bg-elevated); border-radius: var(--radius); }
+.org__theme h3 { margin: 0 0 6px; font-size: var(--fs-sm); font-weight: 600; color: var(--accent); }
+.org__theme ul { margin: 0; padding-left: 18px; }
+.org__theme li,
+.org__theme p { font-size: var(--fs-sm); color: var(--fg-muted); line-height: 1.55; }
+.org__actions { display: flex; justify-content: flex-end; gap: 8px; }
+.org__actions button { padding: 4px 12px; font-size: var(--fs-sm); color: var(--fg-muted); border-radius: var(--radius); }
+.org__actions .is-primary { background: var(--accent); color: var(--accent-fg); }
+
+/* --- Horario --- */
+.isc { display: grid; grid-template-columns: 1fr 260px; height: 100%; min-height: 0; }
+.isc__week { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.isc__tray { padding: 14px 16px; border-left: 1px solid var(--border); background: var(--bg-chrome); overflow-y: auto; min-height: 0; }
+.isc__title { margin: 0 0 4px; font-size: var(--fs-md); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.isc__hint { margin: 0 0 10px; font-size: var(--fs-xs); color: var(--fg-muted); }
+
+.isc__bar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.isc__nav { display: flex; gap: 2px; }
+.isc__step { display: grid; place-items: center; width: 24px; height: 24px; border-radius: var(--radius); color: var(--fg-dim); }
+.isc__step:hover { background: var(--hover); color: var(--fg); }
+.isc__range { margin: 0; font-size: var(--fs-md); font-weight: 600; flex: 1; }
+.isc__today { padding: 2px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--bg-input); color: var(--fg-dim); font-size: var(--fs-xs); }
+.isc__today:hover { background: var(--hover); color: var(--fg); }
+
+/* Siete columnas iguales que ocupan el alto: es lo que le da el aire de horario. */
+.isc__grid { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); min-height: 0; }
+.isc__col { display: flex; flex-direction: column; min-width: 0; border-right: 1px solid var(--border); }
+.isc__col:last-child { border-right: 0; }
+.isc__col.is-today { background: var(--bg-elevated); }
+.isc__col.is-over { background: var(--hover); outline: 1px solid var(--accent); outline-offset: -1px; }
+
+.isc__colhead { display: flex; align-items: baseline; justify-content: center; gap: 6px; padding: 8px 4px; border-bottom: 1px solid var(--border); }
+.isc__dayname { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.5px; color: var(--fg-muted); }
+.isc__daynum { font-size: var(--fs-md); font-weight: 600; color: var(--fg-dim); font-family: var(--font-mono); }
+.isc__col.is-today .isc__dayname,
+.isc__col.is-today .isc__daynum { color: var(--accent); }
+
+.isc__cell { flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.isc__free { font-size: var(--fs-xs); color: var(--fg-muted); text-align: center; padding-top: 6px; opacity: 0.5; }
+.isc__alert { display: flex; align-items: center; gap: 10px; margin: 8px 16px 0; }
+.isc__alert .isc__today { margin-left: auto; flex: 0 0 auto; }
+.isc__hint-rule { margin: 0 0 10px; font-size: var(--fs-xs); color: var(--fg-muted); }
+
+.isc__card { background: var(--bg-elevated); border: 1px solid var(--border); border-left: 2px solid var(--accent); border-radius: var(--radius); padding: 6px 8px; cursor: grab; }
+.isc__card:active { cursor: grabbing; }
+.isc__card:hover { border-color: var(--border-strong); }
+.isc__name { display: block; width: 100%; text-align: left; font-size: var(--fs-sm); color: var(--fg); line-height: 1.3; }
+.isc__name:hover { color: var(--accent); }
+.isc__cardfoot { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.isc__cardfoot .chip { flex: 1; }
+.isc__cardfoot input { padding: 1px 3px; font: inherit; font-size: var(--fs-xs); color: var(--fg-muted); background: var(--bg-input); border: 1px solid var(--border-strong); border-radius: var(--radius); max-width: 100%; }
+.isc__clear { color: var(--fg-dim); display: flex; }
+.isc__clear:hover { color: var(--state-error); }
+
+.isc__tray ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.isc__tray.is-over { outline: 1px solid var(--accent); outline-offset: -1px; }

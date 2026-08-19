@@ -1,0 +1,435 @@
+/*
+ * Modulo GitHub.
+ *
+ * Ningun color literal: todo sale de tokens.css. Si manana cambia el tema, esta
+ * hoja no se toca.
+ */
+
+.gh {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  height: 100%;
+  min-height: 0;
+}
+
+.gh--empty {
+  grid-template-columns: 1fr;
+  place-items: center;
+}
+
+.gh__repos {
+  padding: 16px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.gh__prs {
+  padding: 16px;
+  border-left: 1px solid var(--border);
+  background: var(--bg-chrome);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.gh__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.gh__title {
+  margin: 0 0 8px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--fg-muted);
+}
+
+.gh__head .gh__title {
+  margin: 0;
+}
+
+.gh__user {
+  font-size: var(--fs-sm);
+  color: var(--accent);
+}
+
+.gh__scope {
+  color: var(--accent);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.gh__note {
+  margin: 0 0 12px;
+  font-size: var(--fs-sm);
+  color: var(--fg-dim);
+  line-height: 1.5;
+}
+
+.gh__error {
+  margin: 0 0 12px;
+  font-size: var(--fs-sm);
+  color: var(--state-error);
+  line-height: 1.5;
+}
+
+/* Puerta de entrada cuando gh no tiene sesion. */
+.gh__gate {
+  max-width: 380px;
+  text-align: center;
+  padding: 24px;
+}
+
+.gh__gate .codicon {
+  font-size: 32px;
+  color: var(--fg-muted);
+  margin-bottom: 12px;
+}
+
+/* --- barra de herramientas --- */
+
+.gh__toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.gh__segmented {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.gh__seg {
+  padding: 4px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--fg-dim);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.gh__seg:hover {
+  background: var(--hover);
+}
+
+.gh__seg.is-active {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.gh__search {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+}
+
+.gh__search:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: -1px;
+}
+
+/* --- listas --- */
+
+.gh__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gh__repo,
+.gh__pr,
+.gh__invite {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.gh__repo-head,
+.gh__pr-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gh__spacer {
+  flex: 1;
+}
+
+.gh__repo-name,
+.gh__pr-title,
+.gh__person-name {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.gh__repo-name:hover,
+.gh__pr-title:hover,
+.gh__person-name:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.gh__pr-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.gh__pr-num {
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+}
+
+.gh__repo-desc {
+  margin: 4px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--fg-dim);
+  line-height: 1.4;
+}
+
+.gh__repo-meta,
+.gh__pr-meta {
+  margin: 4px 0 0;
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+}
+
+.gh__pr-tags {
+  margin: 6px 0 0;
+  display: flex;
+  gap: 6px;
+}
+
+.gh__badge {
+  padding: 1px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.gh__badge--ok {
+  border-color: var(--state-done);
+  color: var(--state-done);
+}
+
+.gh__badge--alert {
+  border-color: var(--state-error);
+  color: var(--state-error);
+}
+
+.gh__badge--wait {
+  border-color: var(--state-waiting);
+  color: var(--state-waiting);
+}
+
+.gh__icon-btn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.gh__icon-btn:hover {
+  background: var(--hover);
+  color: var(--fg);
+}
+
+/* --- filtros de PR --- */
+
+.gh__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0 12px;
+}
+
+.gh__chip {
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--fg-dim);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.gh__chip:hover {
+  background: var(--hover);
+}
+
+.gh__chip.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* --- personas --- */
+
+.gh__people {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 8px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+}
+
+.gh__person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+
+/* --- gestion de acceso --- */
+
+.gh__access {
+  margin-top: 8px;
+  padding: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.gh__access .gh__people {
+  margin-top: 0;
+  padding: 0;
+  background: none;
+}
+
+.gh__subtitle {
+  margin: 12px 0 4px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--fg-muted);
+}
+
+.gh__muted {
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+}
+
+.gh__hint {
+  margin: 6px 0 0;
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+}
+
+.gh__invite-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.gh__select {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+}
+
+.gh__select:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: -1px;
+}
+
+/* --- invitaciones --- */
+
+.gh__invites {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+
+.gh__invite:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.gh__invite-text {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--fg);
+  line-height: 1.5;
+}
+
+.gh__invite-actions,
+.gh__confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--fg-dim);
+}
+
+.gh__btn {
+  padding: 3px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.gh__btn:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.gh__btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* --- aviso de copiado --- */
+
+.gh__toast {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font-size: var(--fs-sm);
+}

@@ -1,0 +1,8 @@
+{
+  "id": "filesystem",
+  "name": "Filesystem",
+  "description": "Lectura y escritura acotada a una carpeta.",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+  "requiresEnv": []
+}

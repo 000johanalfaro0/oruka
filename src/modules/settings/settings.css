@@ -1,0 +1,71 @@
+.settings { display: grid; grid-template-columns: 200px 1fr; height: 100%; }
+
+.settings__nav {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 6px;
+  border-right: 1px solid var(--border);
+  background: var(--bg-chrome);
+  overflow-y: auto;
+}
+
+.settings__nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+  border-radius: var(--radius);
+  text-align: left;
+}
+.settings__nav-item:hover { background: var(--hover); color: var(--fg); }
+.settings__nav-item.is-active { background: var(--selection); color: var(--fg); }
+
+.settings__panel { padding: 20px 24px; overflow-y: auto; max-width: 720px; }
+.settings__title { margin: 0 0 6px; font-size: var(--fs-lg); font-weight: 600; }
+.settings__hint { margin: 0 0 14px; font-size: var(--fs-sm); color: var(--fg-muted); line-height: 1.5; }
+.settings__pending { margin: 0; font-size: var(--fs-xs); color: var(--fg-dim); }
+
+.settings__head { display: flex; align-items: center; gap: 8px; }
+.settings__refresh { color: var(--fg-dim); display: flex; }
+.settings__refresh:hover { color: var(--fg); }
+.settings__error { margin: 0 0 10px; font-size: var(--fs-sm); color: var(--state-error); }
+
+.cli-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+
+.cli {
+  display: grid;
+  grid-template-columns: 18px 130px 1fr auto;
+  grid-template-areas: "icon name version modes" ". path path path";
+  align-items: center;
+  gap: 2px 8px;
+  padding: 6px 8px;
+  font-size: var(--fs-sm);
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+  color: var(--fg-dim);
+}
+.cli.is-found { color: var(--fg-muted); }
+.cli .codicon { grid-area: icon; font-size: 13px; color: var(--fg-dim); }
+.cli.is-found .codicon { color: var(--state-done); }
+.cli__name { grid-area: name; color: var(--fg); }
+.cli.is-found .cli__name { color: var(--fg); }
+.cli__version { grid-area: version; font-size: var(--fs-xs); }
+.cli__modes { grid-area: modes; display: flex; gap: 3px; }
+.cli__mode { padding: 0 6px; font-size: 10px; background: var(--bg-input); border-radius: 6px; }
+.cli__path { grid-area: path; font-size: var(--fs-xs); color: var(--fg-dim); font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.settings__relaunch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 5px 12px;
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+.settings__relaunch:hover { background: var(--hover); color: var(--fg); }

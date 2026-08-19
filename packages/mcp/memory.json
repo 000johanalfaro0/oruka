@@ -1,0 +1,8 @@
+{
+  "id": "memory",
+  "name": "Memory",
+  "description": "Memoria persistente entre sesiones del agente.",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-memory"],
+  "requiresEnv": []
+}

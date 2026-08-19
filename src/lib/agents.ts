@@ -1,0 +1,76 @@
+import { invoke } from '@tauri-apps/api/core'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+
+/** Un CLI de IA ya resuelto contra este sistema. */
+export interface DetectedCli {
+  id: string
+  name: string
+  icon: string
+  found: boolean
+  path: string | null
+  version: string | null
+  modes: string[]
+}
+
+export interface ProjectEntry {
+  name: string
+  path: string
+  is_git: boolean
+}
+
+export const detectClis = () => invoke<DetectedCli[]>('detect_clis')
+
+export const listProjects = (root: string) => invoke<ProjectEntry[]>('list_projects', { root })
+
+export const agentSpawn = (args: {
+  id: string
+  cliId: string
+  cwd: string
+  mode: string
+  cols: number
+  rows: number
+  /** Prompt inicial. Corto: el texto largo va en un archivo aparte. */
+  prompt?: string
+}) => invoke<void>('agent_spawn', args)
+
+export const agentWrite = (id: string, data: string) => invoke<void>('agent_write', { id, data })
+
+export const agentResize = (id: string, cols: number, rows: number) =>
+  invoke<void>('agent_resize', { id, cols, rows })
+
+export const agentKill = (id: string) => invoke<void>('agent_kill', { id })
+
+/** La salida reciente de una sesion viva, con el punto en el que se tomo. */
+export interface Scrollback {
+  data: string
+  /** Bytes emitidos por la sesion hasta esta foto. */
+  seq: number
+}
+
+/**
+ * Pide la salida reciente de una sesion para repintarla.
+ *
+ * `null` si la sesion ya no esta viva.
+ */
+export const agentScrollback = (id: string) => invoke<Scrollback | null>('agent_scrollback', { id })
+
+/**
+ * Se suscribe a la salida de una sesion. Devuelve como cancelar.
+ *
+ * El `seq` de cada trozo son los bytes emitidos contando ya ese trozo: sirve
+ * para descartar lo que ya venia dentro de una foto de `agentScrollback`.
+ */
+export const onAgentOutput = (
+  id: string,
+  handler: (data: string, seq: number) => void,
+): Promise<UnlistenFn> =>
+  listen<{ data: string; seq: number }>(`pty:${id}`, (e) => handler(e.payload.data, e.payload.seq))
+
+export const onAgentExit = (id: string, handler: () => void): Promise<UnlistenFn> =>
+  listen(`pty-exit:${id}`, () => handler())
+
+/** Abre una carpeta en el explorador del sistema. */
+export const revealInExplorer = (path: string) => invoke<void>('reveal_in_explorer', { path })
+
+/** Deja un prompt largo en un archivo temporal y devuelve su ruta. */
+export const savePrompt = (content: string) => invoke<string>('save_prompt', { content })

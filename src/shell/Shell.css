@@ -1,0 +1,24 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.shell__view {
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--bg-editor);
+  overflow: hidden;
+}
+
+.shell__tabs-placeholder { height: var(--h-tabs); background: var(--bg-chrome); }
+
+.shell__loading,
+.shell__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--fg-dim);
+  font-size: var(--fs-sm);
+}

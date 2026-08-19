@@ -1,0 +1,30 @@
+[package]
+name = "oruka"
+version = "0.1.0"
+description = "Orquestador desktop de agentes CLI"
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "oruka_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+toml_edit = "0.22"
+similar = "2"
+portable-pty = "0.9"
+
+[profile.release]
+# La app tiene que ser ligera: se optimiza por tamano, no por velocidad bruta.
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
