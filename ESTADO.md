@@ -37,10 +37,10 @@ arrancar Vite**. Si lo creas o editas con la app corriendo, hay que reiniciarla.
 | GitHub | Funcional: repos, gestión de acceso, invitaciones y PR del proyecto activo |
 | Ajustes | Parcial: CLIs y MCP reales; carpetas, GitHub y apariencia pendientes |
 
-Medidas reales del build de release: instalador NSIS **1.1 MB**, binario 2.6 MB,
+Medidas reales del build de release: instalador NSIS **1,35 MB**, binario 3,2 MB,
 27 MB de RSS el proceso principal. Arranque JS 60 kB gzip.
 
-40 tests en Rust, 1 ignorado a propósito.
+48 tests en Rust, 1 ignorado a propósito.
 
 ---
 
@@ -50,7 +50,7 @@ Medidas reales del build de release: instalador NSIS **1.1 MB**, binario 2.6 MB,
       shell/          barra de módulos, pestañas, statusbar, bus, registro
       modules/
         workspace/    grid de agentes, terminales, carpeta de trabajo
-        github/       (esqueleto)
+        github/       repos, acceso, invitaciones y PR
         ideas/        proyectos, detalle, horario, IA
         settings/     ajustes, anclado a la derecha
       setup/          Quick Setup del primer arranque
@@ -187,33 +187,11 @@ comentarios: romperlos deja a alguien sin su herramienta.
 
 ---
 
-## Entorno de esta máquina
+## Entorno local
 
-CLIs detectados y verificados arrancando dentro del PTY:
-
-| CLI | Ruta | Modo permisivo |
-|---|---|---|
-| claude | `~/.local/bin/claude.exe` | `--dangerously-skip-permissions` |
-| codex | shim npm `.cmd` | `--dangerously-bypass-approvals-and-sandbox` |
-| agy | `%LOCALAPPDATA%\agy\bin` | `--dangerously-skip-permissions` |
-| opencode | shim npm `.cmd` | (sin confirmar) |
-
-Configuración MCP de cada uno:
-
-| CLI | Archivo | Clave |
-|---|---|---|
-| claude | `~/.claude.json` | `mcpServers` |
-| codex | `~/.codex/config.toml` | `[mcp_servers.*]` |
-| agy | `~/.gemini/config/mcp_config.json` | `mcpServers` |
-| opencode | `~/.config/opencode/opencode.jsonc` | `mcp` (formato propio) |
-
-**Supabase** `pkkofllpzmmvzjlfhhoa` (sa-east-1, PG 17), compartido con Idearia:
-tablas `projects`, `ideas`, `user_entitlements`, las tres con RLS, y la edge
-function `idearia-ai` sobre Gemini con cuatro tareas (`organize`,
-`transcribe_image`, `ascii_mockup`, `format_chat`). La clave de Gemini vive en el
-servidor y nunca sale de ahí.
-
-**GitHub**: `gh` autenticado con scopes `repo`, `read:org`, `gist`.
+Las rutas de los CLIs de esta máquina, sus archivos de configuración MCP, el
+proyecto de Supabase y la cuenta de GitHub viven en `ENTORNO.local.md`, que no
+se sube: es información de una máquina concreta y no le sirve a nadie más.
 
 ---
 
