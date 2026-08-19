@@ -31,6 +31,13 @@ export const agentSpawn = (args: {
   rows: number
   /** Prompt inicial. Corto: el texto largo va en un archivo aparte. */
   prompt?: string
+  /**
+   * Retomar la conversacion anterior en vez de empezar una nueva.
+   *
+   * Se usa al restaurar sesiones tras cerrar la app: el proceso murio, pero la
+   * conversacion la guarda el propio CLI y sabe volver a ella.
+   */
+  resume?: boolean
 }) => invoke<void>('agent_spawn', args)
 
 export const agentWrite = (id: string, data: string) => invoke<void>('agent_write', { id, data })

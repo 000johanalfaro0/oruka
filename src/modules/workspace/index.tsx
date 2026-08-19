@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { useContextMenu } from '@/shared/ContextMenu'
 import { revealInExplorer } from '@/lib/agents'
+import { baseName } from '@/lib/paths'
 import { bus } from '@/shell/bus'
 import { AgentGrid } from './AgentGrid'
 import { useWorkspaceStore } from './workspaceStore'
@@ -107,7 +108,7 @@ export default function WorkspaceModule() {
                       },
                     ])
                   }
-                  title={p.path}
+                  data-tip={p.path}
                 >
                   <i
                     className={`codicon codicon-${p.is_git ? 'source-control' : 'folder'}`}
@@ -129,13 +130,17 @@ export default function WorkspaceModule() {
             <span className="ws-roots__label">Carpetas de trabajo</span>
             {roots.map((r) => (
               <span key={r} className="ws-root">
+                {/* El nombre, no la ruta entera: la barra se llenaba de
+                    `C:\Users\...` repetido y no se leia nada. La ruta completa
+                    sigue a un paso, en el tooltip. */}
                 <button
                   className="ws-root__open"
                   onClick={() => openProject(r)}
-                  title={`Abrir ${r} como proyecto`}
+                  data-tip={r}
+                  aria-label={`Abrir ${r} como proyecto`}
                 >
                   <i className="codicon codicon-root-folder" aria-hidden="true" />
-                  {r}
+                  {baseName(r)}
                 </button>
                 <span className="ws-root__count">
                   {projects.filter((p) => p.path.startsWith(r)).length}

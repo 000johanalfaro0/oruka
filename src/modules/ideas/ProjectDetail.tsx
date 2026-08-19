@@ -18,6 +18,17 @@ type Organize =
   | { state: 'done'; result: OrganizedResult }
 
 /** Detalle de un proyecto: sus ideas crudas y el resultado organizado. */
+/**
+ * Si merece la pena ofrecer «Ver todo».
+ *
+ * Medir el recorte de verdad exigiria consultar el DOM tras pintar; con el
+ * limite de tres lineas de la tarjeta, contar caracteres y saltos acierta
+ * de sobra y no cuesta nada.
+ */
+function esLarga(content: string): boolean {
+  return content.length > 140 || content.split('\n').length > 3
+}
+
 export function ProjectDetail({ project, onBack }: { project: Project; onBack: () => void }) {
   const [ideas, setIdeas] = useState<Idea[]>([])
   const [tab, setTab] = useState<Tab>('crudas')
@@ -28,6 +39,8 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
   const [rawChat, setRawChat] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Ideas desplegadas. En tarjeta pequena el texto va recortado por defecto. */
+  const [abiertas, setAbiertas] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     repo
@@ -184,7 +197,28 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                     <i className="codicon codicon-trash" aria-hidden="true" />
                   </button>
                 </div>
-                <p className="idea__text">{idea.content}</p>
+                <p className={`idea__text${abiertas.has(idea.id) ? ' is-open' : ''}`}>
+                  {idea.content}
+                </p>
+                {/* Una idea llega a 5000 caracteres y en una tarjeta pequena solo
+                    caben unas lineas. El desplegar va en un boton propio y no en
+                    la tarjeta entera: pinchar para leer no puede pelearse con
+                    seleccionar el texto. */}
+                {esLarga(idea.content) && (
+                  <button
+                    className="idea__more"
+                    onClick={() =>
+                      setAbiertas((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(idea.id)) next.delete(idea.id)
+                        else next.add(idea.id)
+                        return next
+                      })
+                    }
+                  >
+                    {abiertas.has(idea.id) ? 'Ver menos' : 'Ver todo'}
+                  </button>
+                )}
               </li>
             ))}
             {ideas.length === 0 && (

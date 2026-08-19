@@ -115,6 +115,7 @@ fn agent_spawn(
     cols: u16,
     rows: u16,
     prompt: Option<String>,
+    resume: Option<bool>,
 ) -> Result<(), String> {
     let manifest = registry::manifest(&cli_id).ok_or("CLI desconocido")?;
     let program = registry::resolve_bin(&manifest.detect.bin)
@@ -126,6 +127,23 @@ fn agent_spawn(
     // Los modos son datos del manifiesto, no ramas de codigo por CLI.
     if let Some(mode_args) = manifest.modes.get(&mode) {
         args.extend(mode_args.clone());
+    }
+
+    // Retomar la conversacion anterior, si se pide y el CLI sabe.
+    //
+    // Cada uno lo dice a su manera y esta en su manifiesto: `--continue` en
+    // claude y agy, `resume --last` en codex, `session` en opencode. La
+    // diferencia que importa es que unos son banderas y otros SUBCOMANDOS, y un
+    // subcomando tiene que ir el primero o el CLI no lo reconoce. Se distingue
+    // por el guion, sin nombrar a ningun CLI aqui.
+    if resume.unwrap_or(false) && !manifest.resume.is_empty() {
+        if manifest.resume[0].starts_with('-') {
+            args.extend(manifest.resume.clone());
+        } else {
+            for (i, token) in manifest.resume.iter().enumerate() {
+                args.insert(i, token.clone());
+            }
+        }
     }
 
     // Cada CLI recibe el directorio a su manera.

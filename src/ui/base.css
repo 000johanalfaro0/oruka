@@ -35,3 +35,43 @@ button {
 ::-webkit-scrollbar-track { background: transparent; }
 
 .codicon { font-size: 16px; line-height: 1; }
+
+/*
+ * Tooltip propio: `data-tip="texto"` en vez del atributo `title`.
+ *
+ * El `title` lo pinta el navegador con su estilo de sistema —gris, con retardo
+ * largo y esquinas ajenas al tema—, y en una app de escritorio con estetica
+ * propia canta muchisimo. Esto usa los mismos tokens que el resto.
+ *
+ * Se apoya en `::after` sobre el propio elemento, sin envoltorios ni JS: hay
+ * que darle `position: relative` al elemento que lo lleve.
+ */
+[data-tip] { position: relative; }
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+  padding: 3px 8px;
+  max-width: 60ch;
+  width: max-content;
+  font-size: var(--fs-xs);
+  font-family: var(--font-ui);
+  color: var(--fg);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  /* Invisible y sin capturar el raton: si lo capturara, aparecer debajo del
+     cursor provocaria un parpadeo infinito de entrar y salir. */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 90ms ease 260ms;
+}
+[data-tip]:hover::after,
+[data-tip]:focus-visible::after { opacity: 1; }
+
+/* Cerca del borde derecho conviene anclarlo por la derecha para que no se salga. */
+[data-tip][data-tip-align='end']::after { left: auto; right: 0; }

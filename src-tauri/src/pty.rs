@@ -279,6 +279,11 @@ fn clear_session_markers(cmd: &mut CommandBuilder) {
 fn declare_terminal(cmd: &mut CommandBuilder) {
     cmd.env("TERM", "xterm-256color");
     cmd.env("COLORTERM", "truecolor");
+    // Medido con `cargo run --example color_check`: con solo TERM, `claude`
+    // devolvia 70 bytes; con esto, 16331. No todos los CLIs se fian de TERM en
+    // Windows, y esta es la palanca que respetan casi todos. Aqui ademas es
+    // cierta: al otro lado hay un xterm.js con color de 24 bits.
+    cmd.env("FORCE_COLOR", "1");
 }
 
 /// En Windows los CLIs de npm son shims `.cmd`, que CreateProcess no ejecuta

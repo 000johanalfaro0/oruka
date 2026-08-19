@@ -51,13 +51,21 @@ interface Props {
   cwd: string
   mode: string
   prompt?: string
+  /**
+   * Retomar la conversacion en vez de empezar una nueva.
+   *
+   * Se pone al restaurar una sesion tras cerrar la app. El prompt inicial no se
+   * reenvia en ese caso: ya se mando en su dia, y repetirlo confundiria a un
+   * agente que cree estar continuando lo de antes.
+   */
+  resume?: boolean
 }
 
 /**
  * Un agente corriendo. El componente solo pinta y manda teclas: el proceso vive
  * en Rust y sobrevive a que este panel se oculte.
  */
-export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt }: Props) {
+export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -122,7 +130,9 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt }: Props) {
             mode,
             cols: term.cols,
             rows: term.rows,
-            prompt,
+            // Al retomar no se reenvia el prompt: el agente ya lo tiene.
+            prompt: resume ? undefined : prompt,
+            resume,
           })
         } catch (e) {
           started.delete(sessionId)
@@ -166,7 +176,7 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt }: Props) {
       cleanups.forEach((fn) => fn())
       term.dispose()
     }
-  }, [sessionId, cliId, cwd, mode, prompt])
+  }, [sessionId, cliId, cwd, mode, prompt, resume])
 
   return <div className="agent-term__host" ref={hostRef} />
 }

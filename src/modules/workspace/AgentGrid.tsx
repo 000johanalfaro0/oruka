@@ -48,7 +48,7 @@ export function AgentGrid({ project }: { project: OpenProject }) {
   return (
     <div className="grid-wrap" onContextMenu={(e) => openMenu(e, projectMenu())}>
       <div className="grid-bar">
-        <span className="grid-bar__path" title={project.path}>
+        <span className="grid-bar__path" data-tip={project.path}>
           {project.path}
         </span>
         <span className="grid-bar__count">
@@ -124,6 +124,7 @@ export function AgentGrid({ project }: { project: OpenProject }) {
                 cwd={project.path}
                 mode={agent.mode}
                 prompt={agent.prompt}
+                resume={agent.restored}
               />
             </section>
           ))}

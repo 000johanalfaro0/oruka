@@ -11,9 +11,18 @@ export interface Agent {
   sessionId: string
   cliId: string
   cliName: string
+  /** El modo de permisos con el que se lanzo. Se conserva al restaurar. */
   mode: string
   /** Prompt inicial, si el agente se lanzo desde Ideas. */
   prompt?: string
+  /**
+   * Viene de una sesion anterior de la app.
+   *
+   * El proceso murio al cerrar —eso no se puede evitar, es hijo de la app—,
+   * pero la conversacion la guarda el propio CLI. Con esta marca se relanza
+   * pidiendole que la retome en vez de empezar de cero.
+   */
+  restored?: boolean
 }
 
 export interface OpenProject {
@@ -52,10 +61,27 @@ function dedupe(list: ProjectEntry[]): ProjectEntry[] {
 
 const STORAGE_KEY = 'oruka.workspace'
 
+/** Lo que se guarda de un proyecto abierto, con sus agentes. */
+interface PersistedProject {
+  path: string
+  agents: Array<Pick<Agent, 'sessionId' | 'cliId' | 'cliName' | 'mode'>>
+}
+
 interface Persisted {
   roots: string[]
-  open: string[]
+  /**
+   * Antes era `string[]` con solo las rutas. Se lee de las dos formas para no
+   * dejar sin pestanas a quien ya tenia cosas guardadas.
+   */
+  open: Array<string | PersistedProject>
   activePath: string | null
+}
+
+/** Entiende el formato viejo y el nuevo. */
+function readOpen(open: Persisted['open']): PersistedProject[] {
+  return (open ?? []).map((item) =>
+    typeof item === 'string' ? { path: item, agents: [] } : { path: item.path, agents: item.agents ?? [] },
+  )
 }
 
 async function load(): Promise<Persisted> {
@@ -78,7 +104,17 @@ async function load(): Promise<Persisted> {
 function persist(state: WorkspaceState) {
   const data: Persisted = {
     roots: state.roots,
-    open: state.open.map((p) => p.path),
+    // Los agentes se guardan con su modo: al volver, el que estaba en yolo
+    // vuelve en yolo. Sin esto habia que reconfigurarlos uno a uno.
+    open: state.open.map((p) => ({
+      path: p.path,
+      agents: p.agents.map(({ sessionId, cliId, cliName, mode }) => ({
+        sessionId,
+        cliId,
+        cliName,
+        mode,
+      })),
+    })),
     activePath: state.activePath,
   }
   void storeSet(STORAGE_KEY, JSON.stringify(data))
@@ -102,14 +138,23 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     set({ loading: true })
     try {
       const clis = await detectClis()
-      const open = saved.open.map((path) => ({ path, name: baseName(path), agents: [] }))
+      // Los procesos no sobreviven al cierre —son hijos de la app—, pero si la
+      // lista de agentes y su modo. Vuelven marcados como restaurados, y al
+      // arrancar se les pide que retomen la conversacion en vez de empezar otra.
+      const open = readOpen(saved.open).map((p) => ({
+        path: p.path,
+        name: baseName(p.path),
+        agents: p.agents
+          // Si un CLI ya no esta instalado, su agente no puede volver.
+          .filter((a) => clis.some((c) => c.id === a.cliId && c.found))
+          .map((a) => ({ ...a, restored: true })),
+      }))
       set({
         clis,
         roots: saved.roots,
         open,
         activePath: saved.activePath ?? open[0]?.path ?? null,
       })
-      // Los procesos no sobreviven al cierre: las pestanas vuelven vacias.
       // Se reconstruye la lista entera: acumular duplicaria los proyectos en
       // cada montaje del modulo.
       const all: ProjectEntry[] = []
@@ -208,6 +253,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         p.path === projectPath ? { ...p, agents: [...p.agents, agent] } : p,
       ),
     }))
+    // Sin esto, un agente lanzado y la app cerrada acto seguido no se recordaba.
+    persist(get())
   },
 
   removeAgent: async (sessionId) => {
@@ -218,6 +265,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         agents: p.agents.filter((a) => a.sessionId !== sessionId),
       })),
     }))
+    persist(get())
   },
 }))
 

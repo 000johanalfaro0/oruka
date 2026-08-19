@@ -61,7 +61,7 @@ export default function WorkspaceTabs() {
           onClick={() => setActive(p.path)}
           onContextMenu={(e) => openMenu(e, menuFor(p))}
           onAuxClick={(e) => e.button === 1 && void close(p.path)}
-          title={p.path}
+          data-tip={p.path}
         >
           <span className="ws-tab__name">{p.name}</span>
           {p.agents.length > 0 && (
