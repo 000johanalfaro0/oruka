@@ -119,5 +119,67 @@ export const githubSentInvitations = (repo: string) =>
 export const githubCancelInvitation = (repo: string, id: number) =>
   invoke<void>('github_cancel_invitation', { repo, id })
 
+/** Un check de CI sobre un PR. */
+export interface Check {
+  name: string
+  /** `pass`, `fail`, `pending`, `skipping` o `cancel`. */
+  bucket: string
+  state: string
+  url: string
+}
+
+export interface Issue {
+  number: number
+  title: string
+  url: string
+  repo: string
+  updated_at: string
+  labels: string[]
+}
+
+/** En qué punto está la carpeta respecto a su remoto. */
+export interface BranchStatus {
+  branch: string
+  /** `null` si la rama nunca se ha publicado. */
+  upstream: string | null
+  ahead: number
+  behind: number
+  dirty: boolean
+}
+
+/** Las tres formas de revisar. `approve` es la única que no exige texto. */
+export type ReviewAction = 'approve' | 'request-changes' | 'comment'
+
+export const githubPrDiff = (repo: string, number: number) =>
+  invoke<string>('github_pr_diff', { repo, number })
+
+export const githubPrChecks = (repo: string, number: number) =>
+  invoke<Check[]>('github_pr_checks', { repo, number })
+
+/** Revisar es público y va firmado con tu nombre: preguntar antes. */
+export const githubPrReview = (repo: string, number: number, action: ReviewAction, body: string) =>
+  invoke<void>('github_pr_review', { repo, number, action, body })
+
+/** Abre un PR desde la rama actual de la carpeta. Devuelve su URL. */
+export const githubPrCreate = (cwd: string, title: string, body: string, base: string) =>
+  invoke<string>('github_pr_create', { cwd, title, body, base })
+
+export const githubPrMerge = (
+  repo: string,
+  number: number,
+  method: 'merge' | 'squash' | 'rebase',
+  deleteBranch: boolean,
+) => invoke<void>('github_pr_merge', { repo, number, method, deleteBranch })
+
+export const githubPrClose = (repo: string, number: number) =>
+  invoke<void>('github_pr_close', { repo, number })
+
+export const githubIssues = () => invoke<Issue[]>('github_issues')
+
+export const githubReviewCount = () => invoke<number>('github_review_count')
+
+export const githubBranchStatus = (path: string) =>
+  invoke<BranchStatus | null>('github_branch_status', { path })
+
 /** Abre un enlace de GitHub en el navegador del sistema. */
 export const githubOpenUrl = (url: string) => invoke<void>('github_open_url', { url })

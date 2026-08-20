@@ -42,6 +42,15 @@ pub fn run() {
             github_remove_collaborator,
             github_sent_invitations,
             github_cancel_invitation,
+            github_pr_diff,
+            github_pr_checks,
+            github_pr_review,
+            github_pr_create,
+            github_pr_merge,
+            github_pr_close,
+            github_issues,
+            github_review_count,
+            github_branch_status,
             github_open_url,
             reveal_in_explorer,
             save_prompt,
@@ -71,17 +80,17 @@ fn app_version() -> &'static str {
 /// Va a disco y no al navegador porque `localStorage` esta indexado por origen,
 /// y el de Oruka cambia entre la app de desarrollo y la empaquetada.
 #[tauri::command]
-fn store_get(app: AppHandle, key: String) -> Result<Option<String>, String> {
+async fn store_get(app: AppHandle, key: String) -> Result<Option<String>, String> {
     store::get(&app, &key)
 }
 
 #[tauri::command]
-fn store_set(app: AppHandle, key: String, value: String) -> Result<(), String> {
+async fn store_set(app: AppHandle, key: String, value: String) -> Result<(), String> {
     store::set(&app, &key, &value)
 }
 
 #[tauri::command]
-fn store_remove(app: AppHandle, key: String) -> Result<(), String> {
+async fn store_remove(app: AppHandle, key: String) -> Result<(), String> {
     store::remove(&app, &key)
 }
 
@@ -89,17 +98,17 @@ fn store_remove(app: AppHandle, key: String) -> Result<(), String> {
 ///
 /// No pisa lo que ya haya en disco. Devuelve cuantas claves se rescataron.
 #[tauri::command]
-fn store_seed(app: AppHandle, entries: Vec<(String, String)>) -> Result<u32, String> {
+async fn store_seed(app: AppHandle, entries: Vec<(String, String)>) -> Result<u32, String> {
     store::seed(&app, entries)
 }
 
 #[tauri::command]
-fn detect_clis() -> Vec<DetectedCli> {
+async fn detect_clis() -> Vec<DetectedCli> {
     registry::detect_all()
 }
 
 #[tauri::command]
-fn list_projects(root: String) -> Result<Vec<projects::ProjectEntry>, String> {
+async fn list_projects(root: String) -> Result<Vec<projects::ProjectEntry>, String> {
     projects::discover(&PathBuf::from(root))
 }
 
@@ -180,7 +189,9 @@ fn agent_spawn(
         }
     }
 
-    manager.spawn(app, id, &program, &args, &cwd_path, cols, rows)
+    // La marca del contador es dato del manifiesto: el PTY no sabe de CLIs.
+    let tokens = manifest.tokens.as_ref().map(|t| t.after.clone());
+    manager.spawn(app, id, &program, &args, &cwd_path, cols, rows, tokens)
 }
 
 #[tauri::command]
@@ -213,40 +224,40 @@ fn agent_scrollback(manager: State<'_, SharedPty>, id: String) -> Option<pty::Sn
 }
 
 #[tauri::command]
-fn github_status() -> github::GithubStatus {
+async fn github_status() -> github::GithubStatus {
     github::status()
 }
 
 /// Repos del usuario. `shared` son en los que solo colabora.
 #[tauri::command]
-fn github_repos(shared: bool) -> Result<Vec<github::Repo>, String> {
+async fn github_repos(shared: bool) -> Result<Vec<github::Repo>, String> {
     github::repos(shared)
 }
 
 /// A que repo apunta el `origin` de una carpeta. `None` si no apunta a GitHub.
 #[tauri::command]
-fn github_repo_for_path(path: String) -> Option<String> {
+async fn github_repo_for_path(path: String) -> Option<String> {
     github::repo_for_path(std::path::Path::new(&path))
 }
 
 #[tauri::command]
-fn github_prs(repo: String, filter: String) -> Result<Vec<github::PullRequest>, String> {
+async fn github_prs(repo: String, filter: String) -> Result<Vec<github::PullRequest>, String> {
     github::pull_requests(&repo, github::PrFilter::from_id(&filter))
 }
 
 #[tauri::command]
-fn github_collaborators(repo: String) -> Result<Vec<github::Collaborator>, String> {
+async fn github_collaborators(repo: String) -> Result<Vec<github::Collaborator>, String> {
     github::collaborators(&repo)
 }
 
 #[tauri::command]
-fn github_invitations() -> Result<Vec<github::Invitation>, String> {
+async fn github_invitations() -> Result<Vec<github::Invitation>, String> {
     github::invitations()
 }
 
 /// Acepta o rechaza una invitacion. Se ve desde fuera: el front pregunta antes.
 #[tauri::command]
-fn github_respond_invitation(id: u64, accept: bool) -> Result<(), String> {
+async fn github_respond_invitation(id: u64, accept: bool) -> Result<(), String> {
     github::respond_invitation(id, accept)
 }
 
@@ -254,24 +265,86 @@ fn github_respond_invitation(id: u64, accept: bool) -> Result<(), String> {
 ///
 /// Manda un correo a esa persona: la interfaz pregunta antes de llamar aqui.
 #[tauri::command]
-fn github_invite(repo: String, login: String, permission: String) -> Result<(), String> {
+async fn github_invite(repo: String, login: String, permission: String) -> Result<(), String> {
     github::invite_collaborator(&repo, &login, &permission)
 }
 
 #[tauri::command]
-fn github_remove_collaborator(repo: String, login: String) -> Result<(), String> {
+async fn github_remove_collaborator(repo: String, login: String) -> Result<(), String> {
     github::remove_collaborator(&repo, &login)
 }
 
 /// Invitaciones enviadas desde un repo que siguen sin contestar.
 #[tauri::command]
-fn github_sent_invitations(repo: String) -> Result<Vec<github::SentInvitation>, String> {
+async fn github_sent_invitations(repo: String) -> Result<Vec<github::SentInvitation>, String> {
     github::sent_invitations(&repo)
 }
 
 #[tauri::command]
-fn github_cancel_invitation(repo: String, id: u64) -> Result<(), String> {
+async fn github_cancel_invitation(repo: String, id: u64) -> Result<(), String> {
     github::cancel_invitation(&repo, id)
+}
+
+/// El diff de un pull request, para poder revisarlo sin salir de la app.
+#[tauri::command]
+async fn github_pr_diff(repo: String, number: u64) -> Result<String, String> {
+    github::pr_diff(&repo, number)
+}
+
+/// Los checks de CI de un PR. Lista vacia = el repo no tiene CI.
+#[tauri::command]
+async fn github_pr_checks(repo: String, number: u64) -> Result<Vec<github::Check>, String> {
+    github::pr_checks(&repo, number)
+}
+
+/// Aprueba, pide cambios o comenta. Queda publicado con tu nombre.
+#[tauri::command]
+async fn github_pr_review(repo: String, number: u64, action: String, body: String) -> Result<(), String> {
+    github::pr_review(&repo, number, &action, &body)
+}
+
+/// Abre un PR desde la rama actual de la carpeta del proyecto.
+#[tauri::command]
+async fn github_pr_create(
+    cwd: String,
+    title: String,
+    body: String,
+    base: String,
+) -> Result<String, String> {
+    github::pr_create(std::path::Path::new(&cwd), &title, &body, &base)
+}
+
+#[tauri::command]
+async fn github_pr_merge(
+    repo: String,
+    number: u64,
+    method: String,
+    delete_branch: bool,
+) -> Result<(), String> {
+    github::pr_merge(&repo, number, &method, delete_branch)
+}
+
+#[tauri::command]
+async fn github_pr_close(repo: String, number: u64) -> Result<(), String> {
+    github::pr_close(&repo, number)
+}
+
+/// Los issues abiertos que tienes asignados, de todos tus repositorios.
+#[tauri::command]
+async fn github_issues() -> Result<Vec<github::Issue>, String> {
+    github::issues_assigned()
+}
+
+/// Cuantos PR esperan tu revision. Alimenta el aviso de la barra de estado.
+#[tauri::command]
+async fn github_review_count() -> Result<u32, String> {
+    github::review_requested_count()
+}
+
+/// En que rama esta el proyecto y si tiene trabajo sin subir.
+#[tauri::command]
+async fn github_branch_status(path: String) -> Option<github::BranchStatus> {
+    github::branch_status(std::path::Path::new(&path))
 }
 
 /// Abre un enlace de GitHub en el navegador del sistema.
@@ -306,24 +379,24 @@ fn mcp_catalog() -> Vec<mcp::McpServer> {
 }
 
 #[tauri::command]
-fn mcp_state(cli_ids: Vec<String>) -> Vec<mcp::CliMcpState> {
+async fn mcp_state(cli_ids: Vec<String>) -> Vec<mcp::CliMcpState> {
     mcp::state(&cli_ids)
 }
 
 /// Diff de lo que pasaria. No toca nada.
 #[tauri::command]
-fn mcp_preview(cli_id: String, server: mcp::McpServer, remove: bool) -> Result<String, String> {
+async fn mcp_preview(cli_id: String, server: mcp::McpServer, remove: bool) -> Result<String, String> {
     mcp::preview(&cli_id, &server, remove)
 }
 
 /// Aplica el cambio. Devuelve la ruta de la copia de seguridad.
 #[tauri::command]
-fn mcp_apply(cli_id: String, server: mcp::McpServer, remove: bool) -> Result<String, String> {
+async fn mcp_apply(cli_id: String, server: mcp::McpServer, remove: bool) -> Result<String, String> {
     mcp::apply(&cli_id, &server, remove)
 }
 
 #[tauri::command]
-fn mcp_revert(cli_id: String) -> Result<String, String> {
+async fn mcp_revert(cli_id: String) -> Result<String, String> {
     mcp::revert(&cli_id)
 }
 

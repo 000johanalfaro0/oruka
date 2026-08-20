@@ -592,6 +592,301 @@ pub fn cancel_invitation(repo: &str, id: u64) -> Result<(), String> {
     Ok(())
 }
 
+/// Un check de CI sobre un PR.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct Check {
+    pub name: String,
+    /// `pass`, `fail`, `pending`, `skipping` o `cancel`. Es lo que se pinta.
+    pub bucket: String,
+    pub state: String,
+    pub url: String,
+}
+
+#[derive(Debug, Serialize, PartialEq)]
+pub struct Issue {
+    pub number: u64,
+    pub title: String,
+    pub url: String,
+    pub repo: String,
+    pub updated_at: String,
+    pub labels: Vec<String>,
+}
+
+/// En que punto esta la carpeta respecto a su remoto.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct BranchStatus {
+    pub branch: String,
+    /// `None` si la rama no tiene remoto: no se ha publicado todavia.
+    pub upstream: Option<String>,
+    pub ahead: u32,
+    pub behind: u32,
+    /// Si hay cambios sin confirmar.
+    pub dirty: bool,
+}
+
+/// Como `gh`, pero sin tratar el codigo de salida como error.
+///
+/// Hace falta para `gh pr checks`, que **sale con codigo distinto de cero
+/// cuando algun check falla**. Ahi el fallo es el dato que queremos, no un
+/// error de la llamada.
+fn gh_raw(args: &[&str]) -> Result<(bool, String, String), String> {
+    let bin = crate::registry::resolve_bin("gh").ok_or("gh no esta instalado")?;
+    let mut cmd = Command::new(bin);
+    cmd.args(args);
+    hide_console(&mut cmd);
+    let output = cmd
+        .output()
+        .map_err(|e| format!("no se pudo ejecutar gh: {e}"))?;
+    Ok((
+        output.status.success(),
+        String::from_utf8_lossy(&output.stdout).to_string(),
+        String::from_utf8_lossy(&output.stderr).to_string(),
+    ))
+}
+
+fn parse_checks(json: &str) -> Result<Vec<Check>, String> {
+    let items: serde_json::Value = serde_json::from_str(json).map_err(|e| e.to_string())?;
+    let items = items.as_array().ok_or("se esperaba una lista de checks")?;
+    Ok(items
+        .iter()
+        .filter_map(|c| {
+            Some(Check {
+                name: text(c, "name")?,
+                bucket: text(c, "bucket").unwrap_or_else(|| "pending".into()),
+                state: text(c, "state").unwrap_or_default(),
+                url: text(c, "link").unwrap_or_default(),
+            })
+        })
+        .collect())
+}
+
+fn parse_issues(json: &str) -> Result<Vec<Issue>, String> {
+    let items: serde_json::Value = serde_json::from_str(json).map_err(|e| e.to_string())?;
+    let items = items.as_array().ok_or("se esperaba una lista de issues")?;
+    Ok(items
+        .iter()
+        .filter_map(|i| {
+            Some(Issue {
+                number: i.get("number")?.as_u64()?,
+                title: text(i, "title").unwrap_or_default(),
+                url: text(i, "url").unwrap_or_default(),
+                // `gh search` devuelve el repo anidado; `gh issue list`, no.
+                repo: i
+                    .get("repository")
+                    .and_then(|r| text(r, "nameWithOwner").or_else(|| text(r, "name")))
+                    .unwrap_or_default(),
+                updated_at: text(i, "updatedAt").unwrap_or_default(),
+                labels: i
+                    .get("labels")
+                    .and_then(|l| l.as_array())
+                    .map(|l| l.iter().filter_map(|x| text(x, "name")).collect())
+                    .unwrap_or_default(),
+            })
+        })
+        .collect())
+}
+
+/// El diff de un PR, tal cual lo da git.
+pub fn pr_diff(repo: &str, number: u64) -> Result<String, String> {
+    if !valid_repo(repo) {
+        return Err("repositorio con forma invalida".into());
+    }
+    gh(&["pr", "diff", &number.to_string(), "--repo", repo], None)
+}
+
+/// Los checks de CI de un PR.
+///
+/// Una lista vacia no es un error: hay repos sin CI, y hay PR recien abiertos a
+/// los que todavia no ha llegado ningun check.
+pub fn pr_checks(repo: &str, number: u64) -> Result<Vec<Check>, String> {
+    if !valid_repo(repo) {
+        return Err("repositorio con forma invalida".into());
+    }
+    let numero = number.to_string();
+    let (_ok, out, err) = gh_raw(&[
+        "pr",
+        "checks",
+        &numero,
+        "--repo",
+        repo,
+        "--json",
+        "name,state,bucket,link",
+    ])?;
+    if out.trim().is_empty() {
+        if err.contains("no checks") || err.trim().is_empty() {
+            return Ok(Vec::new());
+        }
+        return Err(err.trim().to_string());
+    }
+    parse_checks(&out)
+}
+
+/// Las tres formas de revisar un PR.
+///
+/// Se validan aqui y no se pasa lo que llegue: revisar es una accion publica y
+/// firmada con el nombre del usuario.
+const REVISIONES: [&str; 3] = ["approve", "request-changes", "comment"];
+
+/// Aprueba, pide cambios o comenta un PR.
+///
+/// Queda publicado a nombre del usuario y le llega a quien lo abrio: la
+/// interfaz pregunta antes. Pedir cambios y comentar exigen texto; aprobar no.
+pub fn pr_review(repo: &str, number: u64, action: &str, body: &str) -> Result<(), String> {
+    if !valid_repo(repo) {
+        return Err("repositorio con forma invalida".into());
+    }
+    if !REVISIONES.contains(&action) {
+        return Err(format!("revision desconocida: {action}"));
+    }
+    if action != "approve" && body.trim().is_empty() {
+        return Err("hay que escribir el motivo".into());
+    }
+
+    let numero = number.to_string();
+    let flag = format!("--{action}");
+    let mut args = vec!["pr", "review", &numero, "--repo", repo, &flag];
+    if !body.trim().is_empty() {
+        args.push("--body");
+        args.push(body);
+    }
+    gh(&args, None)?;
+    Ok(())
+}
+
+/// Abre un pull request desde la rama actual de una carpeta.
+///
+/// Se ejecuta **dentro del proyecto** porque `gh` deduce de ahi la rama y el
+/// repositorio. Devuelve la URL del PR recien creado.
+pub fn pr_create(cwd: &Path, title: &str, body: &str, base: &str) -> Result<String, String> {
+    if title.trim().is_empty() {
+        return Err("un pull request necesita titulo".into());
+    }
+    let mut args = vec!["pr", "create", "--title", title, "--body", body];
+    if !base.trim().is_empty() {
+        args.push("--base");
+        args.push(base);
+    }
+    let salida = gh(&args, Some(cwd))?;
+    Ok(salida
+        .lines()
+        .find(|l| l.starts_with("https://"))
+        .unwrap_or(salida.trim())
+        .to_string())
+}
+
+/// Fusiona un PR. `method` es `merge`, `squash` o `rebase`.
+pub fn pr_merge(repo: &str, number: u64, method: &str, delete_branch: bool) -> Result<(), String> {
+    if !valid_repo(repo) {
+        return Err("repositorio con forma invalida".into());
+    }
+    let flag = match method {
+        "merge" => "--merge",
+        "squash" => "--squash",
+        "rebase" => "--rebase",
+        otro => return Err(format!("forma de fusionar desconocida: {otro}")),
+    };
+    let numero = number.to_string();
+    let mut args = vec!["pr", "merge", &numero, "--repo", repo, flag];
+    if delete_branch {
+        args.push("--delete-branch");
+    }
+    gh(&args, None)?;
+    Ok(())
+}
+
+pub fn pr_close(repo: &str, number: u64) -> Result<(), String> {
+    if !valid_repo(repo) {
+        return Err("repositorio con forma invalida".into());
+    }
+    let numero = number.to_string();
+    gh(&["pr", "close", &numero, "--repo", repo], None)?;
+    Ok(())
+}
+
+/// Los issues abiertos que tienes asignados, de todos tus repositorios.
+pub fn issues_assigned() -> Result<Vec<Issue>, String> {
+    let json = gh(
+        &[
+            "search",
+            "issues",
+            "--assignee=@me",
+            "--state=open",
+            "--limit",
+            "50",
+            "--json",
+            "number,title,url,repository,updatedAt,labels",
+        ],
+        None,
+    )?;
+    parse_issues(&json)
+}
+
+/// Cuantos PR esperan tu revision. Para el aviso de la barra de estado.
+pub fn review_requested_count() -> Result<u32, String> {
+    let json = gh(
+        &[
+            "search",
+            "prs",
+            "--review-requested=@me",
+            "--state=open",
+            "--limit",
+            "50",
+            "--json",
+            "number",
+        ],
+        None,
+    )?;
+    let items: serde_json::Value = serde_json::from_str(&json).map_err(|e| e.to_string())?;
+    Ok(items.as_array().map(|a| a.len() as u32).unwrap_or(0))
+}
+
+/// Lee lo que hay delante y detras en `git rev-list --left-right --count`.
+///
+/// La salida son dos numeros separados por un tabulador: primero lo que tiene
+/// el remoto y tu no, y despues lo tuyo sin publicar.
+fn parse_ahead_behind(salida: &str) -> (u32, u32) {
+    let mut partes = salida.split_whitespace();
+    let behind = partes.next().and_then(|s| s.parse().ok()).unwrap_or(0);
+    let ahead = partes.next().and_then(|s| s.parse().ok()).unwrap_or(0);
+    (ahead, behind)
+}
+
+/// En que rama esta la carpeta, y si tiene trabajo sin subir.
+pub fn branch_status(path: &Path) -> Option<BranchStatus> {
+    let git = |args: &[&str]| -> Option<String> {
+        let mut cmd = Command::new("git");
+        cmd.args(args).current_dir(path);
+        hide_console(&mut cmd);
+        let out = cmd.output().ok()?;
+        out.status
+            .success()
+            .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
+    };
+
+    let branch = git(&["rev-parse", "--abbrev-ref", "HEAD"])?;
+    if branch.is_empty() {
+        return None;
+    }
+    let dirty = !git(&["status", "--porcelain"])?.is_empty();
+    let upstream = git(&["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]);
+
+    // Sin remoto no hay con que comparar, y contar algo ahi confundiria.
+    let (ahead, behind) = match &upstream {
+        None => (0, 0),
+        Some(_) => git(&["rev-list", "--left-right", "--count", "@{u}...HEAD"])
+            .map(|s| parse_ahead_behind(&s))
+            .unwrap_or((0, 0)),
+    };
+
+    Some(BranchStatus {
+        branch,
+        upstream,
+        ahead,
+        behind,
+        dirty,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -776,6 +1071,71 @@ mod tests {
         assert!(invite_collaborator("duenyo/repo", "alguien", "dios").is_err());
         assert!(remove_collaborator("duenyo/repo", "../otro").is_err());
         assert!(cancel_invitation("sin-barra", 1).is_err());
+    }
+
+    #[test]
+    fn lee_los_checks_de_ci() {
+        let json = r#"[
+          {"name":"build","state":"SUCCESS","bucket":"pass","link":"https://github.com/o/r/runs/1"},
+          {"name":"tests","state":"FAILURE","bucket":"fail","link":"https://github.com/o/r/runs/2"},
+          {"name":"lint","state":"IN_PROGRESS","bucket":"pending","link":""}
+        ]"#;
+        let checks = parse_checks(json).expect("parsea");
+        assert_eq!(checks.len(), 3);
+        assert_eq!(checks[0].bucket, "pass");
+        assert_eq!(checks[1].bucket, "fail");
+        assert_eq!(checks[2].url, "");
+    }
+
+    /// Un repo sin CI no es un error: simplemente no tiene checks.
+    #[test]
+    fn sin_checks_no_es_un_error() {
+        assert!(parse_checks("[]").expect("parsea").is_empty());
+    }
+
+    #[test]
+    fn lee_los_issues_asignados() {
+        let json = r#"[{"number":12,"title":"Arreglar el login","url":"https://github.com/o/r/issues/12","repository":{"nameWithOwner":"otra/repo"},"updatedAt":"2026-08-19T21:00:00Z","labels":[{"name":"bug"},{"name":"urgente"}]}]"#;
+        let issues = parse_issues(json).expect("parsea");
+        assert_eq!(issues[0].number, 12);
+        assert_eq!(issues[0].repo, "otra/repo");
+        assert_eq!(issues[0].labels, vec!["bug", "urgente"]);
+    }
+
+    /// Revisar es publico y va firmado: solo las tres formas que existen.
+    #[test]
+    fn solo_valen_las_revisiones_que_entiende_github() {
+        for a in ["approve", "request-changes", "comment"] {
+            assert!(REVISIONES.contains(&a), "{a} deberia valer");
+        }
+        assert!(pr_review("duenyo/repo", 1, "reject", "x").is_err());
+        assert!(pr_review("sin-barra", 1, "approve", "").is_err());
+    }
+
+    /// Pedir cambios sin decir cuales no le sirve a nadie; aprobar sin texto si.
+    #[test]
+    fn pedir_cambios_exige_motivo_pero_aprobar_no() {
+        let err = pr_review("duenyo/repo", 1, "request-changes", "   ").unwrap_err();
+        assert!(err.contains("motivo"), "deberia exigir el motivo: {err}");
+        // `approve` sin cuerpo pasa la validacion y ya falla mas tarde por red,
+        // que es justo lo que se quiere comprobar aqui.
+        let err = pr_review("duenyo/repo", 1, "approve", "").unwrap_err();
+        assert!(!err.contains("motivo"), "aprobar no deberia exigir texto");
+    }
+
+    #[test]
+    fn solo_valen_las_formas_de_fusionar_que_existen() {
+        assert!(pr_merge("duenyo/repo", 1, "aplastar", false).is_err());
+        assert!(pr_create(Path::new("."), "   ", "cuerpo", "main").is_err());
+    }
+
+    /// `git rev-list --left-right --count` da primero lo de detras.
+    #[test]
+    fn cuenta_bien_lo_que_falta_por_subir_y_por_bajar() {
+        assert_eq!(parse_ahead_behind("2\t5"), (5, 2));
+        assert_eq!(parse_ahead_behind("0\t0"), (0, 0));
+        assert_eq!(parse_ahead_behind(""), (0, 0));
+        assert_eq!(parse_ahead_behind("basura"), (0, 0));
     }
 
     #[test]

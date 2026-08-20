@@ -20,6 +20,24 @@ pub struct CliManifest {
     pub resume: Vec<String>,
     #[serde(default)]
     pub prompt: Option<PromptSpec>,
+    /// Como reconocer en su salida cuantos tokens lleva gastados.
+    #[serde(default)]
+    pub tokens: Option<TokenSpec>,
+}
+
+/// Donde mirar para saber el gasto de una sesion.
+///
+/// Oruka solo ve el texto que el CLI pinta: no hay ninguna API que le diga el
+/// consumo. Asi que se declara la **marca** que precede al numero y el resto lo
+/// hace un escaner generico. Es dato y no codigo a proposito: si un CLI cambia
+/// su formato, se corrige un JSON y no se recompila nada.
+///
+/// No se usa una expresion regular para no arrastrar esa dependencia por algo
+/// tan simple: con la marca y el primer numero que venga detras basta.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TokenSpec {
+    /// Texto literal que aparece justo antes de la cifra.
+    pub after: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,6 +78,11 @@ pub struct DetectedCli {
     pub path: Option<String>,
     pub version: Option<String>,
     pub modes: Vec<String>,
+    /// Si sabe retomar una conversacion anterior.
+    ///
+    /// Lo necesita la interfaz para no ofrecer «continuar» a un CLI que no
+    /// puede: un boton que siempre falla es peor que no tener boton.
+    pub can_resume: bool,
 }
 
 /// Manifiestos de fabrica.
@@ -130,17 +153,31 @@ fn build_command(path: &PathBuf, args: &[String]) -> Command {
         .map(|e| matches!(e.to_ascii_lowercase().as_str(), "cmd" | "bat"))
         .unwrap_or(false);
 
-    if cfg!(windows) && is_script {
+    let mut cmd = if cfg!(windows) && is_script {
         let mut cmd = Command::new("cmd");
         cmd.arg("/C").arg(path);
-        cmd.args(args);
         cmd
     } else {
-        let mut cmd = Command::new(path);
-        cmd.args(args);
-        cmd
-    }
+        Command::new(path)
+    };
+    cmd.args(args);
+    hide_console(&mut cmd);
+    cmd
 }
+
+/// Evita que detectar los CLIs abra una consola por cada uno.
+///
+/// Sin esto, entrar en Ajustes lanzaba `--version` de cada CLI y cada uno
+/// parpadeaba su propia ventana negra delante del usuario.
+#[cfg(windows)]
+pub fn hide_console(cmd: &mut Command) {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    cmd.creation_flags(CREATE_NO_WINDOW);
+}
+
+#[cfg(not(windows))]
+pub fn hide_console(_cmd: &mut Command) {}
 
 /// Detecta todos los CLIs conocidos en este sistema.
 pub fn detect_all() -> Vec<DetectedCli> {
@@ -159,6 +196,7 @@ pub fn detect_all() -> Vec<DetectedCli> {
                 path: path.map(|p| p.to_string_lossy().to_string()),
                 version,
                 modes,
+                can_resume: !m.resume.is_empty(),
             }
         })
         .collect()

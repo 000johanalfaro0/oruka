@@ -14,3 +14,19 @@
 .statusbar__spacer { flex: 1; }
 
 .statusbar__item { display: flex; align-items: center; gap: 4px; }
+
+/* Aportacion accionable de un modulo: se pulsa y lleva a alguna parte. */
+.statusbar__item--action {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--fg-dim);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+.statusbar__item--action:hover { background: var(--hover); color: var(--fg); }
+.statusbar__item--action .codicon { font-size: 13px; }

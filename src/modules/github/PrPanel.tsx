@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
 import {
+  githubBranchStatus,
   githubOpenUrl,
+  githubPrCreate,
   githubPrs,
   githubRepoForPath,
+  type BranchStatus,
   type PrFilter,
   type PullRequest,
 } from '@/lib/github'
 import { baseName } from '@/lib/paths'
 import { bus } from '@/shell/bus'
-import { cached, TTL_CORTO, TTL_LARGO } from './cache'
+import { cached, invalidate, TTL_CORTO, TTL_LARGO } from './cache'
+import { PrReview } from './PrReview'
 import { relativeTime } from './relativeTime'
 
 /**
@@ -37,6 +41,11 @@ export function PrPanel({ projectPath, onCopy }: Props) {
   const [filter, setFilter] = useState<PrFilter>('all')
   const [prs, setPrs] = useState<PullRequest[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /** El PR abierto para revisar. `null` es la lista. */
+  const [revisando, setRevisando] = useState<PullRequest | null>(null)
+  const [rama, setRama] = useState<BranchStatus | null>(null)
+  const [creando, setCreando] = useState(false)
+  const [nonce, setNonce] = useState(0)
 
   // La carpeta activa manda: al cambiar de proyecto se vuelve a resolver.
   useEffect(() => {
@@ -62,6 +71,26 @@ export function PrPanel({ projectPath, onCopy }: Props) {
     }
   }, [projectPath])
 
+  // En que rama esta y si hay trabajo sin subir. Es la mitad del contexto que
+  // faltaba: el panel sabia el repo, pero no donde estabas dentro de el.
+  useEffect(() => {
+    if (!projectPath) {
+      setRama(null)
+      return
+    }
+    let cancelled = false
+    githubBranchStatus(projectPath)
+      .then((r) => {
+        if (!cancelled) setRama(r)
+      })
+      .catch(() => {
+        if (!cancelled) setRama(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectPath, nonce])
+
   useEffect(() => {
     if (!repo) {
       setPrs(null)
@@ -80,9 +109,24 @@ export function PrPanel({ projectPath, onCopy }: Props) {
     return () => {
       cancelled = true
     }
-  }, [repo, filter])
+  }, [repo, filter, nonce])
 
   const scope = projectPath ? baseName(projectPath) : 'sin proyecto activo'
+
+  const refrescar = () => {
+    // Sin argumento se olvida todo lo guardado. Es deliberado: fusionar o
+    // cerrar cambia la lista, los checks y hasta la rama, y aqui vale mas
+    // volver a preguntarlo todo que acertar qué invalidar.
+    invalidate()
+    setRevisando(null)
+    setNonce((n) => n + 1)
+  }
+
+  if (revisando && repo) {
+    return (
+      <PrReview repo={repo} pr={revisando} onBack={() => setRevisando(null)} onChanged={refrescar} />
+    )
+  }
 
   return (
     <>
@@ -105,6 +149,39 @@ export function PrPanel({ projectPath, onCopy }: Props) {
       {repo && (
         <>
           <p className="gh__repo-meta">{repo}</p>
+
+          {/* En qué rama estás y qué te falta por subir. Sin esto el panel
+              sabía el repositorio pero no dónde estabas dentro de él. */}
+          {rama && (
+            <p className="gh__branch">
+              <i className="codicon codicon-git-branch" aria-hidden="true" />
+              <strong>{rama.branch}</strong>
+              {rama.dirty && <span className="gh__badge gh__badge--wait">sin guardar</span>}
+              {rama.ahead > 0 && <span className="gh__badge">{rama.ahead} por subir</span>}
+              {rama.behind > 0 && <span className="gh__badge">{rama.behind} por bajar</span>}
+              {!rama.upstream && <span className="gh__badge">sin publicar</span>}
+            </p>
+          )}
+
+          {/* Abrir el PR desde aquí cierra el ciclo: trabajas en una rama y lo
+              propones sin cambiar de aplicación. Solo si hay algo que proponer. */}
+          {rama && rama.branch !== 'HEAD' && (rama.ahead > 0 || !rama.upstream) && !creando && (
+            <button className="gh__btn" onClick={() => setCreando(true)}>
+              Abrir un pull request desde {rama.branch}
+            </button>
+          )}
+          {creando && projectPath && (
+            <CrearPr
+              cwd={projectPath}
+              rama={rama?.branch ?? ''}
+              onCancel={() => setCreando(false)}
+              onCreado={() => {
+                setCreando(false)
+                refrescar()
+              }}
+            />
+          )}
+
           <div className="gh__filters" role="tablist">
             {FILTROS.map((f) => (
               <button
@@ -127,7 +204,7 @@ export function PrPanel({ projectPath, onCopy }: Props) {
             {prs?.map((pr) => (
               <li key={pr.number} className="gh__pr">
                 <div className="gh__pr-head">
-                  <button className="gh__pr-title" onClick={() => void githubOpenUrl(pr.url)}>
+                  <button className="gh__pr-title" onClick={() => setRevisando(pr)}>
                     <span className="gh__pr-num">#{pr.number}</span> {pr.title}
                   </button>
                   <button
@@ -164,6 +241,85 @@ export function PrPanel({ projectPath, onCopy }: Props) {
         </>
       )}
     </>
+  )
+}
+
+/**
+ * El formulario para proponer la rama actual.
+ *
+ * `gh` deduce la rama y el repositorio de la carpeta, asi que aqui solo hacen
+ * falta el titulo y la descripcion. Abrir un PR avisa a quien revisa, o sea que
+ * se ve fuera: por eso el boton dice lo que va a pasar y no un «Aceptar».
+ */
+function CrearPr({
+  cwd,
+  rama,
+  onCancel,
+  onCreado,
+}: {
+  cwd: string
+  rama: string
+  onCancel: () => void
+  onCreado: () => void
+}) {
+  const [titulo, setTitulo] = useState('')
+  const [cuerpo, setCuerpo] = useState('')
+  const [base, setBase] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const crear = () => {
+    setBusy(true)
+    setError(null)
+    githubPrCreate(cwd, titulo.trim(), cuerpo.trim(), base.trim())
+      .then((url) => {
+        if (url) void githubOpenUrl(url)
+        onCreado()
+      })
+      .catch((e: unknown) => setError(String(e)))
+      .finally(() => setBusy(false))
+  }
+
+  return (
+    <form
+      className="gh__access"
+      onSubmit={(e) => {
+        e.preventDefault()
+        crear()
+      }}
+    >
+      {error && <p className="gh__error">{error}</p>}
+      <input
+        className="gh__search"
+        autoFocus
+        value={titulo}
+        onChange={(e) => setTitulo(e.target.value)}
+        placeholder="Qué hace este cambio"
+        aria-label="Título del pull request"
+      />
+      <textarea
+        className="pr__body"
+        value={cuerpo}
+        onChange={(e) => setCuerpo(e.target.value)}
+        placeholder="Contexto para quien lo revise (opcional)"
+        rows={3}
+      />
+      <div className="gh__invite-form">
+        <input
+          className="gh__search"
+          value={base}
+          onChange={(e) => setBase(e.target.value)}
+          placeholder="rama destino (por defecto, la principal)"
+          aria-label="Rama destino"
+        />
+        <button className="gh__btn" type="submit" disabled={!titulo.trim() || busy}>
+          {busy ? 'Abriendo…' : `Proponer ${rama}`}
+        </button>
+        <button className="gh__btn" type="button" onClick={onCancel} disabled={busy}>
+          Cancelar
+        </button>
+      </div>
+    </form>
   )
 }
 

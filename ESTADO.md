@@ -1,6 +1,6 @@
 # Oruka — estado del proyecto
 
-Última actualización: 2026-08-19
+Última actualización: 2026-08-20
 
 Orquestador desktop de agentes CLI. Ejecuta y supervisa varios agentes de IA
 locales en distintos proyectos, con GitHub y MCP integrados, y un bloc de ideas
@@ -31,16 +31,16 @@ arrancar Vite**. Si lo creas o editas con la app corriendo, hay que reiniciarla.
 | Shell | Completo: barra de módulos, pestañas, barra de estado, carga diferida |
 | Quick Setup | Completo: CLIs, GitHub, MCP, y relanzable desde Ajustes |
 | Login | Completo: email y contraseña, sesión de 7 días, entra sin red si ya la tenía |
-| Workspace | Funcional: carpeta de trabajo, proyectos, hasta 4 agentes con PTY real, repintado al volver |
+| Workspace | Funcional: 4 agentes con PTY real, repintado al volver, sesiones que sobreviven al cierre, gasto por agente |
 | MCP | Completo: catálogo, matriz MCP × CLI, diff previo, copia y revertir |
 | Ideas | Funcional: proyectos, detalle con 2 pestañas, horario, 3 tareas de IA |
-| GitHub | Funcional: repos, gestión de acceso, invitaciones y PR del proyecto activo |
+| GitHub | Completo: repos, acceso, invitaciones, PR con diff/checks/revisión/fusión, issues y aviso de revisiones |
 | Ajustes | Parcial: CLIs y MCP reales; carpetas, GitHub y apariencia pendientes |
 
 Medidas reales del build de release: instalador NSIS **1,35 MB**, binario 3,2 MB,
 27 MB de RSS el proceso principal. Arranque JS 60 kB gzip.
 
-48 tests en Rust, 1 ignorado a propósito.
+61 tests en Rust, 1 ignorado a propósito.
 
 ---
 
@@ -180,7 +180,18 @@ comentarios: romperlos deja a alguien sin su herramienta.
     `useState` se pierde al cambiar de ventana, y al volver se relanza. En
     GitHub eso eran varios procesos `gh` por visita. Lo que deba sobrevivir va
     fuera de React: `src/modules/github/cache.ts`.
-19. **Git Bash reescribe los argumentos que empiezan por `/`** y los convierte
+19. **Un comando síncrono de Tauri corre en el hilo de la interfaz.** Detectar
+    CLIs lanza cinco procesos y esperarlos congelaba la ventana entera. Todo
+    lo que lance procesos o toque la red tiene que ser `async fn`.
+20. **`CREATE_NO_WINDOW` hay que ponerlo en CADA sitio que lance procesos.**
+    Se puso en `github.rs` y se olvidó en `registry.rs`, así que entrar en
+    Ajustes abría una consola por cada CLI detectado.
+21. **Las secuencias de escape llevan dígitos dentro.** Al buscar el contador
+    de tokens, `ESC[2m` colaba un «2» como si fuera la cifra. Hay que saltar
+    los escapes enteros, hasta la letra que los cierra.
+22. **La marca del contador puede venir partida entre dos lecturas del PTY.**
+    Por eso `TokenScan` guarda una cola del trozo anterior.
+23. **Git Bash reescribe los argumentos que empiezan por `/`** y los convierte
     en rutas de disco: `gh api /user/repos` acaba pidiendo
     `C:/Program Files/Git/user/repos`. Solo afecta al probar a mano desde esa
     shell; Rust llama al binario sin shell. Sin la barra inicial funciona.
@@ -195,52 +206,159 @@ se sube: es información de una máquina concreta y no le sirve a nadie más.
 
 ---
 
+## Hacia dónde va la app
+
+Lo que Oruka quiere llegar a ser, más allá de la lista de tareas. Está aquí para
+que quien retome el proyecto sepa **por qué** se construye cada cosa.
+
+**Un sitio donde supervisar varios agentes a la vez, no donde lanzarlos.** Cuatro
+por proyecto, cada uno en su terminal real, y proyectos ilimitados. El límite de
+cuatro es de diseño: más allá se deja de supervisar y se empieza a rezar.
+
+**Que el equipo quepa dentro.** GitHub no está para consultar, está para
+trabajar: revisar un PR con su diff y su CI, aprobar o pedir cambios, abrir un
+PR, ver los issues que te tocan y enterarte de que alguien espera tu revisión sin
+salir de la app. Si algo obliga a abrir el navegador, falta.
+
+**Que los agentes se conozcan entre ellos.** La idea a explorar son los roles: si
+claude y codex trabajan sobre los mismos archivos, hoy son dos desconocidos que
+se pisan. Darle a cada uno un papel y decirle que el otro existe cambia el
+resultado. Cuidado: si eso acaba en archivos `.md` dentro del proyecto del
+usuario, se aplican las cuatro protecciones de escritura; la vía sin riesgo es
+pasar el rol en el prompt inicial, que no toca nada.
+
+**Que no se acaben los tokens.** Ver lo que gasta cada agente (hecho) y, más
+adelante, enrutar por **0router** para caer en cascada de la suscripción a
+modelos baratos y luego gratis.
+
+**Que se pueda instalar y compartir.** Un instalador de 1,35 MB, sin cuenta ni
+servicios de fondo, que se actualice solo cuando salga una versión nueva.
+
+---
+
 ## Qué falta, por orden
 
-### Defectos conocidos
-- **La app se cae al cerrar un agente** (visto con opencode), sin panic a la
-  vista porque release lleva `panic = "abort"` y `strip`. **Sin confirmar.**
-  Sospecha: `kill()` mata solo el proceso directo, y opencode y codex son shims
-  `.cmd` lanzados con `cmd.exe /C`, así que el que muere es `cmd.exe` y el
-  `node` nieto sobrevive agarrado al PTY. Para verlo de verdad hay que
-  reproducirlo en dev, donde el panic sí se imprime:
-  `RUST_BACKTRACE=1 npm run app 2>&1 | tee ~/oruka-dev.log`
-- Los agentes **mueren al cerrar la app**; no se restauran.
-- No hay CI que ejecute lint, tests y el presupuesto de peso.
+### Bloqueando
 
-### Sin verificar a mano (código escrito y en verde, pero no probado en la app)
-- Repintado de la terminal al volver a una pestaña.
-- Que los agentes salgan en color tras declarar `TERM`.
-- Todo el módulo GitHub. Las escrituras (invitar, cambiar permiso, quitar
-  acceso) **no se han ejecutado nunca**: se ven desde fuera y no se prueban
-  contra la cuenta real de nadie sin querer hacerlo.
+**La app se cae al cerrar un agente** (visto con opencode). **Sin diagnosticar.**
+No hay panic a la vista porque release lleva `panic = "abort"` y `strip`, así que
+el proceso muere en seco. Para verlo hay que reproducirlo en desarrollo:
 
-### GitHub (hecho, sin probar a mano)
-Todo el bloque está escrito y en verde. Falta verlo con datos reales: esta
-cuenta no tiene repos compartidos, ni invitaciones, ni PR abiertos, así que esas
-tres pantallas solo se han visto vacías.
+    RUST_BACKTRACE=1 npm run app 2>&1 | tee ~/oruka-dev.log
 
-Quedó fuera a propósito: transferir un repo, equipos de organización, y gestionar
-el acceso de un repo donde no eres administrador (GitHub lo rechazaría, así que
-ni se ofrece el botón).
+Sospecha sin confirmar: `kill()` mata solo el proceso directo, y opencode y codex
+son shims `.cmd` lanzados con `cmd.exe /C`, así que muere `cmd.exe` y el `node`
+nieto sobrevive agarrado al PTY.
 
-### Ideas (rematar)
-- Imagen: transcripción y mockup ASCII. Están en `ai.ts` pero sin interfaz.
-  Prioridad baja: de 86 ideas reales, **ninguna** es de imagen.
+### Sin verificar a mano (escrito y en verde, nunca probado en la app)
+
+Pesa más que lo que falta por hacer: hay mucho código nuevo que nadie ha visto
+funcionar contra datos reales.
+
+- **Todo el módulo GitHub.** Las escrituras —invitar, cambiar permiso, quitar
+  acceso, aprobar, pedir cambios, crear PR, fusionar, cerrar— **no se han
+  ejecutado nunca**. Son públicas e irreversibles.
+- Que las sesiones vuelvan al reabrir, con su modo, y que el agente retome la
+  conversación.
+- La casilla «continuar la última conversación» al lanzar un agente.
+- Las barras de gasto por agente.
+- Que ya no salga la consola negra al entrar en Ajustes, ni se congele.
+- El repintado de la terminal al volver a una pestaña.
+
+**Color de los agentes: sin cerrar.** Se declaran `TERM`, `COLORTERM` y
+`FORCE_COLOR`, y `cargo run --example color_check` demuestra que codex, agy y
+claude **sí emiten color** por este mismo PTY en sesión interactiva. Aun así se
+reportaron codex y agy en gris. Si se repite con el build actual, el fallo está
+entre Rust y xterm.js, no en los CLIs.
+
+### Entorno de pruebas de GitHub (montado a medias)
+
+El plan completo está en
+`~/.claude/plans/para-probar-todas-las-snuggly-babbage.md`.
+
+**Ya creado** en la cuenta `000johanalfaro0`:
+
+- Repositorio público desechable `oruka-pruebas`.
+- Issue **#1**, asignado, para el panel de issues.
+- PR **#2** (`prueba-diff` → `main`), para la lista, el diff, fusionar y cerrar.
+
+**Falta, y sin esto no se puede terminar:**
+
+1. **El CI**, para que el panel de comprobaciones tenga algo que enseñar. El
+   token de `gh` no tiene el scope `workflow` y GitHub rechaza subir el archivo
+   (responde 404). Dos caminos: completar `gh auth refresh -s workflow` **hasta
+   el paso del navegador**, o crear el archivo desde la web, que usa la sesión
+   del navegador y no necesita el scope:
+   `https://github.com/000johanalfaro0/oruka-pruebas/new/main?filename=.github/workflows/pruebas.yml`
+
+   Con dos trabajos, uno que pasa y otro que falla a propósito (`run: exit 0` y
+   `run: exit 1`). El rojo hace falta para comprobar que la confirmación de
+   fusionar avisa de las comprobaciones en rojo. Guardarlo **como pull request**,
+   no directo a `main`, o el CI no colgará de ningún PR.
+
+2. **Una segunda cuenta de GitHub.** No es opcional: **GitHub no deja aprobar tu
+   propio pull request**, así que con una sola cuenta el botón «Aprobar» no se
+   puede probar nunca. Hace falta que la cuenta B:
+   - acepte una invitación a `oruka-pruebas` y abra un PR **pidiendo revisión**;
+   - cree su propio repo público e **invite a la cuenta A**, que es lo único que
+     puebla dos pantallas hoy vacías: **invitaciones recibidas** y la pestaña
+     **«Compartidos conmigo»**.
+
+3. **El instalador en una máquina limpia.** Para esto sí sirve un entorno virgen,
+   y **Windows Sandbox** es la opción ligera: viene con este Windows 11 Pro, está
+   disponible sin instalar y la virtualización está activa. Se borra al cerrarla,
+   así que no vale para probar la persistencia entre reinicios.
+
+Al terminar, borrar los repositorios de pruebas.
+
+### Pedido y sin empezar
+
+| Qué | Estado |
+|---|---|
+| **0router** | Investigado, sin empezar. Es un **servidor local** al que apuntan los CLIs, no un agente: no va en `packages/adapters/`. Su sitio es una sección propia que lo detecte, lo arranque y configure a los CLIs, reutilizando la escritura segura de MCP. Falta confirmar **CLI por CLI** cómo se le indica un servidor propio. No está instalado en el equipo. |
+| **Auto-actualización** | Sin empezar. Con la release publicada, encaja en GitHub Releases. Es lo que hace que otra persona reciba versiones nuevas sin enterarse. |
+| **Roles entre agentes** | Idea a explorar. Ver «Hacia dónde va la app». |
+| **Marcas de tokens** | Solo **codex** declara la suya. Falta ver qué escriben claude, agy y opencode y añadirla a sus manifiestos. |
+| **Skills de ECC en agy** | Diagnosticado y **no es del proyecto**: codex tiene 209 skills en `~/.codex/skills` y su `ecc-install-state.json`; agy solo una en `~/.gemini/skills` y ningún estado de instalación. ECC nunca se instaló para agy. |
+| **Captura real con agentes** | La landing usa una recreación generada con codex, etiquetada como tal. Falta lanzar dos o tres agentes de verdad y capturar. |
+| **Repositorio público** | Decisión del usuario. Mientras sea privado, la descarga de la release solo le sirve a él. Ya se comprobó que no hay secretos en el historial. |
+| **Rotar el token de Supabase** | El `refresh_token` quedó visible en un transcript. Cerrar sesión en la app y volver a entrar lo revoca. |
+
+### Infraestructura
+
+- **No hay CI** que ejecute lint, tests y el presupuesto de peso.
+
+### Ideas
+
 - Subir el tope de 5000 caracteres por idea, que ya se está tocando.
-- Editar descripción del proyecto y borrar proyecto.
+- Editar la descripción de un proyecto y poder borrarlo.
+- Imagen: transcripción y mockup ASCII. Están en `ai.ts` pero sin interfaz.
+  Prioridad baja: de 86 ideas reales, ninguna es de imagen.
 
 ### Workspace
-Selector de layout manual, estado real del agente (idle/working/waiting/error),
-divisores arrastrables, buscar dentro de la terminal.
+
+- Selector de layout manual.
+- Estado real del agente: inactivo, trabajando, esperando, error.
+- Divisores arrastrables.
+- Buscar dentro de la terminal.
 
 ### MCP
-Formulario para añadir un MCP propio, credenciales en el gestor del sistema, y
-soportar `opencode.jsonc` con comentarios en vez de negarse.
+
+- Formulario para añadir un MCP propio.
+- Credenciales en el gestor del sistema.
+- Soportar `opencode.jsonc` con comentarios en vez de negarse.
 
 ### Cierre
-Restaurar sesiones al reabrir, auto-actualización, empaquetado para macOS y
-Linux, recortar la app Flutter a **Oruka Capture** y apagar la web de Idearia.
+
+- Empaquetado para macOS y Linux.
+- Recortar la app Flutter a **Oruka Capture**.
+- Apagar la web de Idearia.
+
+### Landing
+
+Publicada como artefacto privado: captura de la app, arte ASCII generado con
+codex y descarga apuntando a la release. **Su fuente vive fuera del repositorio**,
+en el scratchpad de la sesión; si se quiere conservar, hay que moverla a `docs/`.
 
 ---
 

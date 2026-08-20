@@ -16,13 +16,13 @@ export interface Agent {
   /** Prompt inicial, si el agente se lanzo desde Ideas. */
   prompt?: string
   /**
-   * Viene de una sesion anterior de la app.
+   * Arranca retomando la conversacion anterior en vez de empezar una nueva.
    *
-   * El proceso murio al cerrar —eso no se puede evitar, es hijo de la app—,
-   * pero la conversacion la guarda el propio CLI. Con esta marca se relanza
-   * pidiendole que la retome en vez de empezar de cero.
+   * Se pone en dos casos: al restaurar sesiones tras cerrar la app, y cuando
+   * eliges «continuar» al lanzar el agente a mano. El proceso no se puede
+   * salvar —es hijo de la app— pero la conversacion la guarda el propio CLI.
    */
-  restored?: boolean
+  resume?: boolean
 }
 
 export interface OpenProject {
@@ -48,7 +48,13 @@ interface WorkspaceState {
   closeProject: (path: string) => Promise<void>
   setActive: (path: string) => void
   showProjectList: () => void
-  addAgent: (projectPath: string, cliId: string, mode: string, prompt?: string) => void
+  addAgent: (
+    projectPath: string,
+    cliId: string,
+    mode: string,
+    prompt?: string,
+    resume?: boolean,
+  ) => void
   removeAgent: (sessionId: string) => Promise<void>
 }
 
@@ -147,7 +153,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         agents: p.agents
           // Si un CLI ya no esta instalado, su agente no puede volver.
           .filter((a) => clis.some((c) => c.id === a.cliId && c.found))
-          .map((a) => ({ ...a, restored: true })),
+          .map((a) => ({ ...a, resume: true })),
       }))
       set({
         clis,
@@ -235,7 +241,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     bus.emit('workspace.projectChanged', { projectPath: path })
   },
 
-  addAgent: (projectPath, cliId, mode, prompt) => {
+  addAgent: (projectPath, cliId, mode, prompt, resume) => {
     const { open, clis } = get()
     const project = open.find((p) => p.path === projectPath)
     if (!project || project.agents.length >= MAX_AGENTS) return
@@ -247,6 +253,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       cliName: cli?.name ?? cliId,
       mode,
       prompt,
+      resume,
     }
     set((s) => ({
       open: s.open.map((p) =>

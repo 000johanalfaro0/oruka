@@ -2,19 +2,46 @@
   "id": "codex",
   "name": "Codex CLI",
   "icon": "openai",
-  "detect": { "bin": "codex", "versionArgs": ["--version"] },
-  "launch": { "args": [], "cwd": "flag", "cwdFlag": "-C" },
+  "detect": {
+    "bin": "codex",
+    "versionArgs": [
+      "--version"
+    ]
+  },
+  "launch": {
+    "args": [],
+    "cwd": "flag",
+    "cwdFlag": "-C"
+  },
   "modes": {
     "default": [],
-    "yolo": ["--dangerously-bypass-approvals-and-sandbox"],
-    "auto": ["-a", "never", "-s", "workspace-write"]
+    "yolo": [
+      "--dangerously-bypass-approvals-and-sandbox"
+    ],
+    "auto": [
+      "-a",
+      "never",
+      "-s",
+      "workspace-write"
+    ]
   },
-  "resume": ["resume", "--last"],
-  "prompt": { "via": "positional" },
+  "resume": [
+    "resume",
+    "--last"
+  ],
+  "prompt": {
+    "via": "positional"
+  },
   "mcp": {
     "format": "codex-toml",
     "path": "~/.codex/config.toml",
     "key": "mcp_servers",
-    "cli": ["mcp", "add"]
+    "cli": [
+      "mcp",
+      "add"
+    ]
+  },
+  "tokens": {
+    "after": "tokens used"
   }
 }

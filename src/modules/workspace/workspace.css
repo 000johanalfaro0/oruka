@@ -228,3 +228,16 @@
 
 .ws-root__open { display: inline-flex; align-items: center; gap: 5px; font-size: inherit; font-family: inherit; color: inherit; }
 .ws-root__open:hover { color: var(--accent); }
+
+/* Lo gastado por el agente. La barra compara con el que mas gasta de la
+   rejilla: ningun CLI dice cual es su tope, asi que un porcentaje absoluto
+   seria inventado. */
+.panel__tokens { display: flex; align-items: center; gap: 5px; margin-left: auto; }
+.panel__tokens-num { font-size: var(--fs-xs); color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.panel__tokens-bar { width: 34px; height: 3px; background: var(--bg-input); border-radius: 2px; overflow: hidden; }
+.panel__tokens-bar > span { display: block; height: 100%; background: var(--accent); }
+
+/* Continuar o empezar de cero, al elegir agente. */
+.picker__opcion { padding: 6px 10px; border-bottom: 1px solid var(--border); }
+.picker__opcion label { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--fg-dim); cursor: pointer; }
+.picker__aviso { margin-left: 6px; font-size: var(--fs-xs); color: var(--fg-muted); font-weight: 400; }

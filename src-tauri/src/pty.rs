@@ -67,6 +67,141 @@ impl Scrollback {
     }
 }
 
+/// Busca en la salida cuantos tokens lleva gastados la sesion.
+///
+/// Trabaja sobre un flujo troceado, y ahi esta la trampa: la marca puede venir
+/// partida entre dos lecturas (`token` en una y `s used` en la siguiente). Por
+/// eso se conserva una cola del texto anterior y se busca sobre la union.
+#[derive(Default)]
+pub struct TokenScan {
+    /// La marca declarada en el manifiesto. Vacia = este CLI no lo publica.
+    marca: String,
+    /// Final del trozo anterior, para no perder marcas partidas.
+    cola: String,
+    /// Lo ultimo leido. Es un total, no una suma: el CLI ya acumula.
+    pub total: Option<u64>,
+}
+
+/// Cuantos caracteres de cola se guardan: la marca mas la cifra mas larga.
+const COLA: usize = 64;
+
+impl TokenScan {
+    fn new(marca: Option<String>) -> Self {
+        TokenScan {
+            marca: marca.unwrap_or_default(),
+            ..Default::default()
+        }
+    }
+
+    /// Devuelve `Some(total)` solo cuando el numero cambia.
+    fn push(&mut self, texto: &str) -> Option<u64> {
+        if self.marca.is_empty() {
+            return None;
+        }
+        let unido = format!("{}{}", self.cola, texto);
+        let encontrado = ultimo_valor(&unido, &self.marca);
+
+        // La cola se guarda siempre, haya habido suerte o no. Se corta por una
+        // frontera de caracter, que si no un acento partido rompe la cadena.
+        let objetivo = unido.len().saturating_sub(COLA);
+        let corte = unido
+            .char_indices()
+            .map(|(i, _)| i)
+            .find(|i| *i >= objetivo)
+            .unwrap_or(unido.len());
+        self.cola = unido[corte..].to_string();
+
+        match encontrado {
+            Some(n) if Some(n) != self.total => {
+                self.total = Some(n);
+                Some(n)
+            }
+            _ => None,
+        }
+    }
+}
+
+/// El ultimo numero que sigue a la marca dentro del texto.
+///
+/// Se queda con la ultima aparicion porque el contador va subiendo y lo que
+/// interesa es el estado actual, no el primero que se vio.
+fn ultimo_valor(texto: &str, marca: &str) -> Option<u64> {
+    let mut mejor = None;
+    let mut desde = 0;
+    while let Some(pos) = texto[desde..].find(marca) {
+        let inicio = desde + pos + marca.len();
+        if let Some(n) = primer_numero(&texto[inicio..]) {
+            mejor = Some(n);
+        }
+        desde = inicio;
+    }
+    mejor
+}
+
+/// El primer numero de un texto, saltando lo que haya en medio.
+///
+/// Acepta `33245`, `33,245`, `33.245` y `12k`. Se salta espacios, saltos de
+/// linea y secuencias de escape, porque entre la marca y la cifra un TUI mete
+/// de todo para colocar el cursor.
+fn primer_numero(texto: &str) -> Option<u64> {
+    let bytes = texto.as_bytes();
+    let mut i = 0;
+    // No se busca indefinidamente: si la cifra no viene cerca, no es la nuestra.
+    let tope = bytes.len().min(48);
+    while i < tope {
+        // Las secuencias de escape LLEVAN DIGITOS DENTRO: `ESC[2m` tiene un 2 y
+        // se colaba como si fuera el contador. Hay que saltarlas enteras, hasta
+        // la letra que las cierra.
+        if bytes[i] == 0x1b {
+            i += 1;
+            if i < bytes.len() && bytes[i] == b'[' {
+                i += 1;
+                while i < bytes.len() && !(0x40..=0x7e).contains(&bytes[i]) {
+                    i += 1;
+                }
+            }
+            i += 1;
+            continue;
+        }
+        if bytes[i].is_ascii_digit() {
+            break;
+        }
+        i += 1;
+    }
+    if i >= tope || i >= bytes.len() || !bytes[i].is_ascii_digit() {
+        return None;
+    }
+
+    let mut digitos = String::new();
+    while i < bytes.len() {
+        let c = bytes[i] as char;
+        if c.is_ascii_digit() {
+            digitos.push(c);
+        } else if (c == ',' || c == '.') && i + 1 < bytes.len() && bytes[i + 1].is_ascii_digit() {
+            // Separador de miles, no decimal: se ignora y se sigue leyendo.
+        } else {
+            break;
+        }
+        i += 1;
+    }
+    if digitos.is_empty() {
+        return None;
+    }
+    let valor: u64 = digitos.parse().ok()?;
+
+    // Un sufijo `k` o `M` multiplica lo leido.
+    Some(match texto[i..].chars().next().unwrap_or(' ') {
+        'k' | 'K' => valor * 1_000,
+        'M' => valor * 1_000_000,
+        _ => valor,
+    })
+}
+
+#[derive(Clone, Serialize)]
+struct Tokens {
+    total: u64,
+}
+
 /// Lo que se guarda de una sesion viva, mas su salida reciente.
 pub struct Session {
     writer: Box<dyn Write + Send>,
@@ -112,6 +247,7 @@ impl PtyManager {
         cwd: &Path,
         cols: u16,
         rows: u16,
+        tokens: Option<String>,
     ) -> Result<(), String> {
         let pair: PtyPair = NativePtySystem::default()
             .openpty(PtySize {
@@ -150,6 +286,8 @@ impl PtyManager {
         let scrollback = Arc::new(Mutex::new(Scrollback::default()));
         let reader_scrollback = scrollback.clone();
         let event = format!("pty:{id}");
+        let token_event = format!("pty-tokens:{id}");
+        let mut scan = TokenScan::new(tokens);
         let reader_app = app.clone();
         std::thread::spawn(move || {
             let mut buf = [0u8; 8192];
@@ -159,6 +297,12 @@ impl PtyManager {
                     Ok(n) => {
                         let seq = reader_scrollback.lock().unwrap().push(&buf[..n]);
                         let data = String::from_utf8_lossy(&buf[..n]).to_string();
+                        // El gasto va por su propio evento y solo cuando cambia:
+                        // mezclarlo con la salida obligaria al front a mirar
+                        // cada trozo de texto que llega, que son miles.
+                        if let Some(total) = scan.push(&data) {
+                            let _ = reader_app.emit(&token_event, Tokens { total });
+                        }
                         if reader_app.emit(&event, Chunk { data, seq }).is_err() {
                             break;
                         }
@@ -378,6 +522,62 @@ mod tests {
         let foto = s.snapshot();
         assert!(foto.data.ends_with("final\n"));
         assert!(!foto.data.contains('\u{fffd}'), "quedo un caracter partido");
+    }
+
+    /// Lee la cifra en las formas en que un CLI la escribe.
+    #[test]
+    fn lee_el_contador_en_sus_distintas_formas() {
+        assert_eq!(ultimo_valor("tokens used 33245", "tokens used"), Some(33245));
+        assert_eq!(ultimo_valor("tokens used 33,245", "tokens used"), Some(33245));
+        assert_eq!(ultimo_valor("tokens used 33.245", "tokens used"), Some(33245));
+        assert_eq!(ultimo_valor("tokens used 12k", "tokens used"), Some(12_000));
+        // Los TUI meten saltos y escapes entre la marca y el numero.
+        assert_eq!(
+            ultimo_valor("tokens used\r\n\x1b[2m  8341", "tokens used"),
+            Some(8341)
+        );
+    }
+
+    /// El contador sube: vale el ultimo, no el primero.
+    #[test]
+    fn se_queda_con_la_ultima_aparicion() {
+        let texto = "tokens used 100 ... trabajo ... tokens used 999";
+        assert_eq!(ultimo_valor(texto, "tokens used"), Some(999));
+    }
+
+    /// Sin marca no se inventa nada.
+    #[test]
+    fn sin_la_marca_no_hay_cifra() {
+        assert_eq!(ultimo_valor("no dice nada de eso", "tokens used"), None);
+        // La marca esta pero el numero queda lejisimos: no es el suyo.
+        let lejos = format!("tokens used{}42", " ".repeat(60));
+        assert_eq!(ultimo_valor(&lejos, "tokens used"), None);
+    }
+
+    /// La trampa de verdad: la marca partida entre dos lecturas del PTY.
+    #[test]
+    fn una_marca_partida_entre_dos_trozos_no_se_pierde() {
+        let mut scan = TokenScan::new(Some("tokens used".into()));
+        assert_eq!(scan.push("trabajando... tok"), None);
+        assert_eq!(scan.push("ens used 4321\r\n"), Some(4321));
+    }
+
+    /// Solo avisa cuando el numero cambia, para no inundar al front.
+    #[test]
+    fn solo_avisa_cuando_el_numero_cambia() {
+        let mut scan = TokenScan::new(Some("tokens used".into()));
+        assert_eq!(scan.push("tokens used 100"), Some(100));
+        assert_eq!(scan.push(" mas salida sin contador"), None);
+        assert_eq!(scan.push("tokens used 100"), None, "el mismo no se repite");
+        assert_eq!(scan.push("tokens used 250"), Some(250));
+    }
+
+    /// Un CLI que no declara marca no gasta nada en esto.
+    #[test]
+    fn sin_marca_declarada_el_escaner_no_hace_nada() {
+        let mut scan = TokenScan::new(None);
+        assert_eq!(scan.push("tokens used 999"), None);
+        assert_eq!(scan.total, None);
     }
 
     /// Un agente tiene que salir en color. Si no se le dice en que terminal

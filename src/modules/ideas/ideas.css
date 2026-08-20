@@ -25,7 +25,7 @@
 /* --- Lista de proyectos --- */
 .ipl { padding: 14px 16px; }
 .ipl__head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.ipl__title { margin: 0; font-size: var(--fs-lg); font-weight: 600; flex: 1; }
+.ipl__title { margin: 0; font-size: var(--fs-xl); font-weight: 600; flex: 1; }
 .ipl__count { padding: 0 6px; font-size: var(--fs-xs); color: var(--fg-dim); background: var(--bg-elevated); border-radius: 8px; }
 .ipl__add { display: flex; align-items: center; gap: 5px; padding: 4px 10px; font-size: var(--fs-sm); color: var(--fg-muted); border-radius: var(--radius); }
 .ipl__add:hover { background: var(--hover); color: var(--fg); }
@@ -93,7 +93,7 @@
 .ipd__head { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
 .ipd__back { color: var(--fg-muted); display: flex; }
 .ipd__back:hover { color: var(--fg); }
-.ipd__title { margin: 0; font-size: var(--fs-lg); font-weight: 600; flex: 1; }
+.ipd__title { margin: 0; font-size: var(--fs-xl); font-weight: 600; flex: 1; }
 .ipd__status { padding: 3px 6px; font: inherit; font-size: var(--fs-xs); color: var(--fg-muted); background: var(--bg-input); border: 1px solid var(--border-strong); border-radius: var(--radius); }
 .ipd__agent { display: flex; align-items: center; gap: 5px; padding: 4px 12px; font-size: var(--fs-sm); background: var(--accent); color: var(--accent-fg); border-radius: var(--radius); }
 .ipd__agent:hover { filter: brightness(1.1); }

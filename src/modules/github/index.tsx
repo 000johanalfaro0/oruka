@@ -9,6 +9,7 @@ import {
   type Invitation,
 } from '@/lib/github'
 import { cached, invalidate, TTL_CORTO, TTL_LARGO } from './cache'
+import { Issues } from './Issues'
 import { PrPanel } from './PrPanel'
 import { RepoList } from './RepoList'
 import './github.css'
@@ -78,6 +79,7 @@ export default function GithubModule() {
           {status?.user && <span className="gh__user">{status.user}</span>}
         </div>
         <Invitations />
+        <Issues projectPath={project} repoActivo={null} />
         <RepoList onCopy={copiar} />
       </section>
 

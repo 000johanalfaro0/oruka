@@ -20,6 +20,12 @@ const modules: OrukaModule[] = [
     label: 'GitHub',
     icon: 'github',
     view: lazy(() => import('@/modules/github')),
+    // Diferido como todo lo demas: la barra de estado ya envuelve cada
+    // aportacion en Suspense. Avisa de que te toca revisar algo aunque estes
+    // en otro modulo, que es justo cuando sirve de algo.
+    statusBar: lazy(() =>
+      import('@/modules/github/ReviewBadge').then((m) => ({ default: m.ReviewBadge })),
+    ),
   },
   {
     id: 'ideas',

@@ -365,6 +365,64 @@
   outline-offset: -1px;
 }
 
+/* --- revisar un pull request --- */
+
+.pr { display: flex; flex-direction: column; gap: 10px; }
+.pr__head { display: flex; align-items: center; gap: 6px; }
+.pr__title { margin: 0; font-size: var(--fs-md); font-weight: 600; flex: 1; min-width: 0; }
+
+.pr__checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.pr__check { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--fg-dim); }
+.pr__check .codicon { font-size: 13px; }
+.pr__check--pass .codicon { color: var(--state-done); }
+.pr__check--fail .codicon { color: var(--state-error); }
+.pr__check--pending .codicon { color: var(--state-waiting); }
+.pr__checkname { padding: 0; background: none; border: 0; color: inherit; font: inherit; text-align: left; }
+.pr__checkname:hover { color: var(--accent); }
+
+/* El diff es lo unico de este panel que puede ser enorme: se le pone techo y
+   su propio scroll para que no estire la columna entera. */
+.pr__diff {
+  margin: 0;
+  padding: 8px 10px;
+  max-height: 46vh;
+  overflow: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  white-space: pre;
+  user-select: text;
+}
+.df-add { color: var(--state-done); }
+.df-del { color: var(--state-error); }
+.df-hunk { color: var(--accent); }
+.df-file { color: var(--fg); font-weight: 600; }
+
+.pr__body {
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--fg);
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  resize: vertical;
+}
+.pr__body:focus-visible { outline: 1px solid var(--focus); outline-offset: -1px; }
+
+.pr__check-label { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--fg-muted); margin-top: 6px; }
+.pr__aviso { color: var(--state-error); }
+
+/* --- la rama del proyecto --- */
+
+.gh__branch { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; font-size: var(--fs-xs); color: var(--fg-dim); }
+.gh__branch .codicon { font-size: 13px; }
+.gh__branch strong { color: var(--fg); font-family: var(--font-mono); font-weight: 500; }
+
 /* --- invitaciones --- */
 
 .gh__invites {

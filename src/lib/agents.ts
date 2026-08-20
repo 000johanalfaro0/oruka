@@ -10,6 +10,13 @@ export interface DetectedCli {
   path: string | null
   version: string | null
   modes: string[]
+  /**
+   * Si sabe retomar una conversacion anterior.
+   *
+   * La interfaz no ofrece «continuar» a un CLI que no puede: un botón que
+   * siempre falla es peor que no tener botón.
+   */
+  can_resume: boolean
 }
 
 export interface ProjectEntry {
@@ -72,6 +79,18 @@ export const onAgentOutput = (
   handler: (data: string, seq: number) => void,
 ): Promise<UnlistenFn> =>
   listen<{ data: string; seq: number }>(`pty:${id}`, (e) => handler(e.payload.data, e.payload.seq))
+
+/**
+ * Se suscribe al contador de tokens de una sesion.
+ *
+ * Solo llega cuando el numero cambia, no con cada trozo de salida. Un CLI que
+ * no publique su gasto no emite nunca.
+ */
+export const onAgentTokens = (
+  id: string,
+  handler: (total: number) => void,
+): Promise<UnlistenFn> =>
+  listen<{ total: number }>(`pty-tokens:${id}`, (e) => handler(e.payload.total))
 
 export const onAgentExit = (id: string, handler: () => void): Promise<UnlistenFn> =>
   listen(`pty-exit:${id}`, () => handler())
