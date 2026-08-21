@@ -1,0 +1,73 @@
+/* Aviso de version nueva. Ningun color propio: todo de tokens.css.
+ *
+ * Flota abajo a la derecha, encima de la barra de estado. No empuja nada ni
+ * reajusta la ventana: aparecer no puede mover el trabajo de sitio. */
+
+.upd {
+  position: fixed;
+  right: 12px;
+  bottom: calc(var(--h-statusbar) + 12px);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 380px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  animation: upd-entra 200ms ease-out;
+}
+
+@keyframes upd-entra {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Quien haya pedido menos movimiento no ve el deslizamiento. */
+@media (prefers-reduced-motion: reduce) {
+  .upd { animation: none; }
+}
+
+.upd__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.upd__title {
+  font-size: var(--fs-sm);
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.upd__hint {
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upd__acts { display: flex; gap: 6px; margin-left: auto; flex: 0 0 auto; }
+
+.upd__later,
+.upd__go {
+  padding: 4px 11px;
+  font-size: var(--fs-xs);
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.upd__later {
+  color: var(--fg-muted);
+  background: none;
+  border: 1px solid var(--border);
+}
+.upd__later:hover { color: var(--fg); background: var(--hover); }
+
+.upd__go {
+  color: var(--accent-fg);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+}
+.upd__go:hover { filter: brightness(1.1); }

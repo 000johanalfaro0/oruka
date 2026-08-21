@@ -8,3 +8,7 @@ src-tauri/target/
 
 # Notas de una maquina concreta: rutas, cuentas, proyecto de Supabase.
 *.local.md
+
+# Claves de firma: nunca al repositorio.
+*.key
+*.key.pub

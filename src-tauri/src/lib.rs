@@ -24,6 +24,12 @@ use registry::DetectedCli;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        // Actualizacion dentro de la app. Sin esto, cada version nueva obliga
+        // a que alguien se entere por su cuenta y reinstale a mano, que es
+        // pedirle demasiado a quien solo queria usar la herramienta.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        // Hace falta para reiniciar despues de aplicar la actualizacion.
+        .plugin(tauri_plugin_process::init())
         .manage(Arc::new(PtyManager::default()))
         .invoke_handler(tauri::generate_handler![
             app_version,

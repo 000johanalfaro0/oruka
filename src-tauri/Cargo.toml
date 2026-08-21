@@ -1,6 +1,6 @@
 [package]
 name = "oruka"
-version = "0.1.1"
+version = "0.1.2"
 description = "Orquestador desktop de agentes CLI"
 edition = "2021"
 rust-version = "1.77"
@@ -20,6 +20,8 @@ serde_json = { version = "1", features = ["preserve_order"] }
 toml_edit = "0.22"
 similar = "2"
 portable-pty = "0.9"
+tauri-plugin-updater = "2.0.0-rc.4"
+tauri-plugin-process = "2.0.0-rc.1"
 
 [profile.release]
 # La app tiene que ser ligera: se optimiza por tamano, no por velocidad bruta.
