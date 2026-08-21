@@ -37,7 +37,7 @@ arrancar Vite**. Si lo creas o editas con la app corriendo, hay que reiniciarla.
 | GitHub | Completo: repos, acceso, invitaciones, PR con diff/checks/revisión/fusión, issues y aviso de revisiones |
 | Ajustes | Parcial: CLIs y MCP reales; carpetas, GitHub y apariencia pendientes |
 
-Medidas reales del build de release: instalador NSIS **1,35 MB**, binario 3,2 MB,
+Medidas reales del build de release: instalador NSIS **1,39 MB**, binario 3,2 MB,
 27 MB de RSS el proceso principal. Arranque JS 60 kB gzip.
 
 61 tests en Rust, 1 ignorado a propósito.
@@ -259,7 +259,7 @@ pasar el rol en el prompt inicial, que no toca nada.
 adelante, enrutar por **0router** para caer en cascada de la suscripción a
 modelos baratos y luego gratis.
 
-**Que se pueda instalar y compartir.** Un instalador de 1,35 MB, sin cuenta ni
+**Que se pueda instalar y compartir.** Un instalador de 1,39 MB, sin cuenta ni
 servicios de fondo, que se actualice solo cuando salga una versión nueva.
 
 ---
@@ -379,8 +379,17 @@ Al terminar, borrar los repositorios de pruebas.
 ### Landing
 
 Publicada como artefacto privado: captura de la app, arte ASCII generado con
-codex y descarga apuntando a la release. **Su fuente vive fuera del repositorio**,
-en el scratchpad de la sesión; si se quiere conservar, hay que moverla a `docs/`.
+codex y descarga apuntando a `releases/latest`, que se actualiza sola con cada
+release nueva. **Su fuente ya está en el repositorio**, en `docs/landing.html`.
+
+Lo que sí caduca es el **tamaño anunciado**: aparece cuatro veces en la página y
+hay que cambiarlo a mano cuando cambie el instalador. Hoy dice 1,39 MB.
+
+**Pendiente:** la release publicada (`v0.1.0`, del 19 de agosto) lleva el
+instalador de 1,38 MB, anterior a los roles, al gasto por CLI y a Pencil. La
+landing apunta a esa release, así que quien descargue hoy se lleva la versión
+vieja. Hay un instalador nuevo construido en
+`src-tauri/target/release/bundle/nsis/`, sin publicar.
 
 ---
 
