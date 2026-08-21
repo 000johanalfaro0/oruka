@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { detectClis, installCli, type DetectedCli } from '@/lib/agents'
-import { githubStatus, type GithubStatus } from '@/lib/github'
+import { githubInstall, githubLogin, githubStatus, type GithubStatus } from '@/lib/github'
+import { onAgentExit, onAgentOutput } from '@/lib/agents'
 import { McpMatrix } from '@/shared/McpMatrix'
 import { RolesPanel } from '@/shared/RolesPanel'
 import { storeGet, storeRemove, storeSet } from '@/lib/store'
@@ -29,6 +30,57 @@ export function QuickSetup({ onDone }: { onDone: () => void }) {
   /** El comando que se va a ejecutar, esperando confirmacion. */
   const [confirmar, setConfirmar] = useState<DetectedCli | null>(null)
   const [salida, setSalida] = useState<{ id: string; texto: string; mal: boolean } | null>(null)
+  /** Lo que va escribiendo gh mientras autentica. */
+  const [ghLog, setGhLog] = useState<string>('')
+  const [ghBusy, setGhBusy] = useState<null | 'instalando' | 'conectando'>(null)
+
+  /**
+   * Instala gh y vuelve a preguntar por su estado.
+   *
+   * Se redetecta en vez de fiarse: es la unica forma de saber si de verdad
+   * quedo instalado.
+   */
+  const instalarGh = async () => {
+    setGhBusy('instalando')
+    setGhLog('')
+    try {
+      await githubInstall()
+      setGh(await githubStatus())
+    } catch (e) {
+      setGhLog(String(e).slice(-500))
+    } finally {
+      setGhBusy(null)
+    }
+  }
+
+  /**
+   * Conecta la cuenta sin salir de la app.
+   *
+   * gh abre el navegador y deja el codigo en el portapapeles; lo unico que
+   * queda por hacer es pegarlo y aprobar. Al terminar el proceso se vuelve a
+   * preguntar el estado, que es como se sabe si funciono.
+   */
+  const conectarGh = async () => {
+    setGhBusy('conectando')
+    setGhLog('')
+    try {
+      const off = await onAgentOutput('gh-login', (data) => {
+        // Se quitan las secuencias de escape: aqui no hay terminal que las
+        // entienda, y sin limpiarlas el codigo se lee entre basura.
+        setGhLog((prev) => (prev + limpiar(data)).slice(-600))
+      })
+      const offExit = await onAgentExit('gh-login', () => {
+        off()
+        offExit()
+        setGhBusy(null)
+        void githubStatus().then(setGh)
+      })
+      await githubLogin()
+    } catch (e) {
+      setGhLog(String(e).slice(-500))
+      setGhBusy(null)
+    }
+  }
 
   /**
    * Instala o actualiza un CLI y vuelve a mirar el PATH.
@@ -149,8 +201,9 @@ export function QuickSetup({ onDone }: { onDone: () => void }) {
             <>
               <h2 className="setup__title">GitHub</h2>
               <p className="setup__hint">
-                Si ya usas <code>gh</code>, Oruka reutiliza esa sesión y no guarda ninguna
-                credencial.
+                Oruka trabaja con <code>gh</code>, la herramienta oficial de GitHub, y reutiliza
+                su sesión: nunca ve tu token, así que tampoco puede perderlo. Por eso la sesión es
+                de este equipo — <strong>entrar en Oruka no conecta GitHub</strong>.
               </p>
               {!gh && <p className="setup__pending">Comprobando…</p>}
               {gh && gh.authenticated && (
@@ -163,17 +216,42 @@ export function QuickSetup({ onDone }: { onDone: () => void }) {
                 </div>
               )}
               {gh && !gh.authenticated && (
-                <div className="setup__gh">
-                  <i className="codicon codicon-warning" aria-hidden="true" />
-                  <div>
-                    <strong>{gh.message ?? 'sin sesión'}</strong>
-                    <span className="setup__scopes">
-                      {gh.installed
-                        ? 'Ejecuta gh auth login y vuelve a comprobarlo desde Ajustes.'
-                        : 'El módulo GitHub quedará desactivado hasta que lo configures.'}
-                    </span>
+                <>
+                  <div className="setup__gh">
+                    <i className="codicon codicon-warning" aria-hidden="true" />
+                    <div>
+                      <strong>
+                        {gh.installed ? 'Sin sesión en este equipo' : 'gh no está instalado'}
+                      </strong>
+                      <span className="setup__scopes">
+                        {gh.installed
+                          ? 'Conecta tu cuenta: se abre el navegador con el código ya copiado.'
+                          : 'Hace falta para el módulo de GitHub. Se instala desde aquí.'}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                  <div className="setup__gh-acts">
+                    {!gh.installed && (
+                      <button
+                        className="setup__go"
+                        disabled={ghBusy !== null}
+                        onClick={() => void instalarGh()}
+                      >
+                        {ghBusy === 'instalando' ? 'Instalando…' : 'Instalar gh'}
+                      </button>
+                    )}
+                    {gh.installed && (
+                      <button
+                        className="setup__go"
+                        disabled={ghBusy !== null}
+                        onClick={() => void conectarGh()}
+                      >
+                        {ghBusy === 'conectando' ? 'Esperando al navegador…' : 'Conectar con GitHub'}
+                      </button>
+                    )}
+                  </div>
+                  {ghLog && <pre className="setup__salida">{ghLog}</pre>}
+                </>
               )}
             </>
           )}
@@ -237,6 +315,12 @@ export function QuickSetup({ onDone }: { onDone: () => void }) {
       </div>
     </div>
   )
+}
+
+/** Quita las secuencias de escape: aqui no hay terminal que las interprete. */
+function limpiar(texto: string): string {
+  // eslint-disable-next-line no-control-regex
+  return texto.replace(/\u001b\[[0-9;?]*[A-Za-z]/g, '')
 }
 
 /** Borra la marca de configurado y recarga: el Quick Setup vuelve a salir. */

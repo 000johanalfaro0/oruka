@@ -183,3 +183,22 @@ export const githubBranchStatus = (path: string) =>
 
 /** Abre un enlace de GitHub en el navegador del sistema. */
 export const githubOpenUrl = (url: string) => invoke<void>('github_open_url', { url })
+
+/**
+ * Instala `gh` con el gestor de paquetes del sistema.
+ *
+ * Sin `gh` el modulo de GitHub entero esta apagado, asi que esto no es una
+ * comodidad: es lo que separa tener una cuarta parte de la app o no tenerla.
+ */
+export const githubInstall = () => invoke<string>('github_install')
+
+/**
+ * Arranca la autenticacion dentro de la app.
+ *
+ * Abre el navegador y deja el codigo de un solo uso en el portapapeles, asi que
+ * al usuario solo le queda pegarlo y aprobar. Esa parte no se puede quitar: es
+ * GitHub quien exige que una persona apruebe el acceso.
+ *
+ * La salida llega por el mismo canal que la de un agente, con el id `gh-login`.
+ */
+export const githubLogin = () => invoke<void>('github_login')

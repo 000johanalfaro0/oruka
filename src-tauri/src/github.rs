@@ -153,6 +153,66 @@ pub struct Invitation {
 ///
 /// El error de `gh` se pasa tal cual: dice mucho mejor que nosotros que la
 /// sesion caduco, que no hay red o que falta un scope.
+/// Instala `gh` con el gestor de paquetes del sistema.
+///
+/// Sin `gh` el modulo de GitHub entero esta apagado, asi que dejar al usuario
+/// con un "instalalo tu" es dejarle sin una cuarta parte de la app. El comando
+/// se enseña antes de ejecutarlo, igual que con los agentes.
+pub fn install() -> Result<String, String> {
+    let (bin, args): (&str, Vec<&str>) = if cfg!(windows) {
+        ("winget", vec!["install", "--id", "GitHub.cli", "-e", "--accept-source-agreements", "--accept-package-agreements"])
+    } else if cfg!(target_os = "macos") {
+        ("brew", vec!["install", "gh"])
+    } else {
+        return Err("en este sistema hay que instalar gh a mano: https://cli.github.com".into());
+    };
+
+    let mut cmd = if cfg!(windows) {
+        let mut c = Command::new("cmd");
+        c.arg("/C").arg(bin);
+        c
+    } else {
+        Command::new(bin)
+    };
+    cmd.args(&args);
+    crate::registry::hide_console(&mut cmd);
+
+    let salida = cmd
+        .output()
+        .map_err(|e| format!("no se pudo lanzar {bin}: {e}"))?;
+    let texto = format!(
+        "{}{}",
+        String::from_utf8_lossy(&salida.stdout),
+        String::from_utf8_lossy(&salida.stderr)
+    );
+    if salida.status.success() {
+        Ok(texto)
+    } else {
+        Err(if texto.trim().is_empty() {
+            format!("la instalacion fallo con codigo {:?}", salida.status.code())
+        } else {
+            texto
+        })
+    }
+}
+
+/// Los argumentos con los que autenticar sin hacer preguntas.
+///
+/// `--web` abre el navegador, `--clipboard` deja el codigo de un solo uso en el
+/// portapapeles, y los otros dos contestan por adelantado las unicas dos cosas
+/// que `gh` preguntaria. Sin ellos el proceso se queda esperando en un dialogo
+/// que el usuario no ve.
+///
+/// La parte del navegador NO se puede evitar: es el propio GitHub quien exige
+/// que una persona apruebe el acceso. Lo unico que puede hacer la app es que no
+/// haya que escribir nada.
+pub fn login_args() -> Vec<String> {
+    ["auth", "login", "--web", "--clipboard", "--git-protocol", "https", "--skip-ssh-key"]
+        .iter()
+        .map(|s| s.to_string())
+        .collect()
+}
+
 fn gh(args: &[&str], cwd: Option<&Path>) -> Result<String, String> {
     let bin = crate::registry::resolve_bin("gh").ok_or("gh no esta instalado")?;
     let mut cmd = Command::new(bin);

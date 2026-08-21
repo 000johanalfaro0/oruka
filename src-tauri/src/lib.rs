@@ -34,6 +34,8 @@ pub fn run() {
             detect_clis,
             install_cli,
             github_status,
+            github_install,
+            github_login,
             github_repos,
             github_repo_for_path,
             github_prs,
@@ -247,6 +249,37 @@ fn agent_scrollback(manager: State<'_, SharedPty>, id: String) -> Option<pty::Sn
 #[tauri::command]
 async fn github_status() -> github::GithubStatus {
     github::status()
+}
+
+/// Instala `gh` con el gestor de paquetes del sistema.
+#[tauri::command]
+async fn github_install() -> Result<String, String> {
+    github::install()
+}
+
+/// Arranca la autenticacion de GitHub dentro de la propia app.
+///
+/// Va por un PTY y no por un comando normal a proposito: `gh` se niega a hacer
+/// el flujo del navegador si no cree estar en un terminal, y ademas asi el
+/// usuario ve lo que esta pasando en vez de mirar una ventana quieta.
+///
+/// La sesion se llama siempre igual porque solo puede haber una: autenticarse
+/// dos veces a la vez no significa nada.
+#[tauri::command]
+async fn github_login(app: AppHandle, manager: State<'_, SharedPty>) -> Result<(), String> {
+    let program = registry::resolve_bin("gh")
+        .ok_or("gh no esta instalado en este equipo")?;
+    manager.spawn(
+        app,
+        "gh-login".into(),
+        &program,
+        &github::login_args(),
+        &std::env::temp_dir(),
+        100,
+        24,
+        None,
+        false,
+    )
 }
 
 /// Repos del usuario. `shared` son en los que solo colabora.

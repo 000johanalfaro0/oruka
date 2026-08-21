@@ -111,3 +111,6 @@
   white-space: pre-wrap;
 }
 .setup__salida.is-mal { color: var(--state-error); border-color: var(--state-error); }
+
+/* Acciones de GitHub: instalar gh o conectar la cuenta, sin salir de la app. */
+.setup__gh-acts { display: flex; gap: 8px; margin-top: 10px; }
