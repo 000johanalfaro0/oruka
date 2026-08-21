@@ -41,12 +41,16 @@
       "add"
     ]
   },
-  "tokens": {
-    "after": "tokens used"
-  },
   "roles": {
     "file": "AGENTS.md",
     "role": "Implementador",
     "brief": "Escribe el código de las tareas ya acordadas. No cambia decisiones de diseño por su cuenta."
+  },
+  "usage": {
+    "marker": "% context left",
+    "number": "before",
+    "unit": "percent",
+    "label": "de contexto",
+    "direction": "left"
   }
 }

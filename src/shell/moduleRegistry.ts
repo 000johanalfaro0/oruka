@@ -14,6 +14,12 @@ const modules: OrukaModule[] = [
     icon: 'terminal',
     view: lazy(() => import('@/modules/workspace')),
     tabs: lazy(() => import('@/modules/workspace/Tabs')),
+    // El gasto de los CLIs abiertos, en la fila de abajo. Va aqui y no dentro
+    // de la ventana porque la cuota es de la cuenta, no de la pestana: sigue
+    // interesando mientras miras GitHub o Ideas.
+    statusBar: lazy(() =>
+      import('@/modules/workspace/UsageBar').then((m) => ({ default: m.UsageBar })),
+    ),
   },
   {
     id: 'github',

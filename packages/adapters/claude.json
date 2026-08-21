@@ -39,5 +39,12 @@
     "file": "CLAUDE.md",
     "role": "Arquitecto",
     "brief": "Diseña antes de tocar, revisa lo que escriben los demás y mantiene la coherencia del conjunto."
+  },
+  "usage": {
+    "marker": "You've used",
+    "number": "after",
+    "unit": "percent",
+    "label": "del límite semanal",
+    "direction": "used"
   }
 }

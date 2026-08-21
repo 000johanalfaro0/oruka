@@ -194,8 +194,24 @@ fn agent_spawn(
     }
 
     // La marca del contador es dato del manifiesto: el PTY no sabe de CLIs.
-    let tokens = manifest.tokens.as_ref().map(|t| t.after.clone());
-    manager.spawn(app, id, &program, &args, &cwd_path, cols, rows, tokens)
+    let tokens = manifest.usage.as_ref().map(|u| u.marker.clone());
+    // Donde esta la cifra respecto a la marca lo decide el manifiesto, no aqui.
+    let tokens_antes = manifest
+        .usage
+        .as_ref()
+        .map(|u| u.number == "before")
+        .unwrap_or(false);
+    manager.spawn(
+        app,
+        id,
+        &program,
+        &args,
+        &cwd_path,
+        cols,
+        rows,
+        tokens,
+        tokens_antes,
+    )
 }
 
 #[tauri::command]

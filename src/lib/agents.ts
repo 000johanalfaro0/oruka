@@ -25,6 +25,20 @@ export interface DetectedCli {
    * este.
    */
   role: { file: string; role: string; brief: string } | null
+  /**
+   * Como publica este CLI su propio gasto, si lo publica.
+   *
+   * No todos hablan de lo mismo: claude dice cuanto llevas de tu limite
+   * semanal y codex cuanta memoria le queda a la conversacion. Por eso viene
+   * la etiqueta y el sentido, y no se mezclan entre si.
+   */
+  usage: {
+    marker: string
+    number: 'before' | 'after'
+    unit: 'percent' | 'tokens'
+    label: string
+    direction: 'used' | 'left'
+  } | null
 }
 
 export interface ProjectEntry {

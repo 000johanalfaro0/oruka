@@ -1,7 +1,14 @@
 import { create } from 'zustand'
 import { bus } from '@/shell/bus'
 import { baseName } from '@/lib/paths'
-import { agentKill, detectClis, listProjects, type DetectedCli, type ProjectEntry } from '@/lib/agents'
+import {
+  agentKill,
+  detectClis,
+  listProjects,
+  onAgentTokens,
+  type DetectedCli,
+  type ProjectEntry,
+} from '@/lib/agents'
 import { storeGet, storeSet } from '@/lib/store'
 import { syncProject } from '@/lib/roles'
 
@@ -32,12 +39,48 @@ export interface OpenProject {
   agents: Agent[]
 }
 
+/**
+ * Lo que gasta cada CLI, no cada agente.
+ *
+ * La cuota es de la cuenta, no de la ventana: dos agy abiertos comparten el
+ * mismo limite, asi que comparten cifra y comparten barra. Por eso va indexado
+ * por CLI y no por sesion.
+ */
+type Gasto = Record<string, number>
+
+/**
+ * Quien esta escuchando el gasto de cada sesion.
+ *
+ * Vive FUERA de React a proposito. El shell desmonta el modulo que no esta
+ * activo, asi que una suscripcion dentro de un componente se pierde al cambiar
+ * de ventana y la barra del pie se quedaria congelada mirando a otro lado.
+ */
+const escuchas = new Map<string, () => void>()
+
+/** Empieza a escuchar el gasto de una sesion y lo guarda bajo su CLI. */
+function escuchar(sessionId: string, cliId: string, set: (g: (p: Gasto) => Gasto) => void) {
+  if (escuchas.has(sessionId)) return
+  // Se marca ya para que dos llamadas seguidas no abran dos suscripciones.
+  escuchas.set(sessionId, () => {})
+  void onAgentTokens(sessionId, (total) => {
+    set((prev) => ({ ...prev, [cliId]: total }))
+  }).then((off) => escuchas.set(sessionId, off))
+}
+
+/** Deja de escuchar una sesion que ya no existe. */
+function dejar(sessionId: string) {
+  escuchas.get(sessionId)?.()
+  escuchas.delete(sessionId)
+}
+
 interface WorkspaceState {
   roots: string[]
   discovered: ProjectEntry[]
   open: OpenProject[]
   activePath: string | null
   clis: DetectedCli[]
+  /** Lo que lleva gastado cada CLI, indexado por su id. */
+  usage: Gasto
   initialised: boolean
   loading: boolean
   error: string | null
@@ -134,6 +177,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   open: [],
   activePath: null,
   clis: [],
+  usage: {},
   loading: false,
   error: null,
 
@@ -162,6 +206,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         open,
         activePath: saved.activePath ?? open[0]?.path ?? null,
       })
+      // Los agentes restaurados tambien gastan: sin esto, sus barras se
+      // quedaban vacias hasta que cerrabas y abrias el agente a mano.
+      for (const p of open) {
+        for (const a of p.agents) {
+          escuchar(a.sessionId, a.cliId, (f) => set((st) => ({ usage: f(st.usage) })))
+        }
+      }
       // Se reconstruye la lista entera: acumular duplicaria los proyectos en
       // cada montaje del modulo.
       const all: ProjectEntry[] = []
@@ -229,6 +280,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     // Cerrar una pestana mata sus agentes: no dejamos procesos huerfanos.
     for (const agent of project?.agents ?? []) {
       await agentKill(agent.sessionId).catch(() => {})
+      dejar(agent.sessionId)
     }
     const rest = get().open.filter((p) => p.path !== path)
     const active = get().activePath === path ? (rest.at(-1)?.path ?? null) : get().activePath
@@ -269,12 +321,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         p.path === projectPath ? { ...p, agents: [...p.agents, agent] } : p,
       ),
     }))
+    escuchar(agent.sessionId, cliId, (f) => set((st) => ({ usage: f(st.usage) })))
     // Sin esto, un agente lanzado y la app cerrada acto seguido no se recordaba.
     persist(get())
   },
 
   removeAgent: async (sessionId) => {
     await agentKill(sessionId).catch(() => {})
+    dejar(sessionId)
     set((s) => ({
       open: s.open.map((p) => ({
         ...p,

@@ -199,6 +199,18 @@ comentarios: romperlos deja a alguien sin su herramienta.
     CLI ahí sería una escritura y un borrado. Por eso el bloque es **uno solo
     con la lista entera** y los destinos se agrupan por nombre de archivo, no
     por CLI. De paso es lo que se quería: cada agente ve a los demás.
+25. **Los agentes no publican tokens: publican porcentajes, y de cosas
+    distintas.** claude dice cuánto llevas de tu **límite semanal** (sube al
+    gastar); codex, cuánta **memoria le queda a la conversación** (baja al
+    gastar). No son comparables y no se suman. Por eso cada uno lleva en su
+    manifiesto su marca, su unidad, su etiqueta y su sentido, y por eso la
+    cifra puede ir **delante** de la marca y no solo detrás.
+26. **La cuota es de la cuenta, no de la ventana.** Dos agentes del mismo CLI
+    comparten límite: una sola barra. Indexar el gasto por sesión en vez de por
+    CLI enseñaría la misma cifra repetida como si fueran dos consumos.
+27. **Escuchar el gasto dentro de un componente no vale.** El shell desmonta el
+    módulo inactivo (trampa 18), así que la barra del pie se congelaría en
+    cuanto miraras GitHub. La suscripción vive en el almacén, fuera de React.
 
 ---
 
@@ -253,7 +265,9 @@ funcionar contra datos reales.
 - Que las sesiones vuelvan al reabrir, con su modo, y que el agente retome la
   conversación.
 - La casilla «continuar la última conversación» al lanzar un agente.
-- Las barras de gasto por agente.
+- Las barras de gasto, ahora **en la barra de estado y por CLI**, no por agente:
+  que aparezcan al abrir un agente, que dos ventanas del mismo CLI sigan
+  enseñando una sola barra, y que la fila de abajo no crezca ni dé saltos.
 - Que ya no salga la consola negra al entrar en Ajustes, ni se congele.
 - El repintado de la terminal al volver a una pestaña.
 - El reparto de roles: que al abrir una carpeta aparezcan los `.md` con el
@@ -314,7 +328,7 @@ Al terminar, borrar los repositorios de pruebas.
 | **0router** | Investigado, sin empezar. Es un **servidor local** al que apuntan los CLIs, no un agente: no va en `packages/adapters/`. Su sitio es una sección propia que lo detecte, lo arranque y configure a los CLIs, reutilizando la escritura segura de MCP. Falta confirmar **CLI por CLI** cómo se le indica un servidor propio. No está instalado en el equipo. |
 | **Auto-actualización** | Sin empezar. Con la release publicada, encaja en GitHub Releases. Es lo que hace que otra persona reciba versiones nuevas sin enterarse. |
 | **Roles entre agentes** | **Escrito, sin probar en la app.** Cada CLI recibe su papel en el archivo que ya lee (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`), como un **bloque delimitado**: lo que está fuera de las marcas no se toca nunca. Viene **apagado**; se activa en el paso «Roles» del Quick Setup, que solo ofrece los CLIs instalados y deja cambiar el papel de cada uno. Se dispara al abrir una carpeta. Falta: llevarlo también a Ajustes |
-| **Marcas de tokens** | Solo **codex** declara la suya. Falta ver qué escriben claude, agy y opencode y añadirla a sus manifiestos. |
+| **Marcas de gasto** | **Rehecho.** Se comprobó lanzando los cuatro de verdad (`cargo run --example token_check`). La marca que tenía codex (`tokens used`) **era vieja y ya no aparece**. Hoy: claude dice «You've used N% of your weekly limit» y codex «N% context left». **agy** no dijo nada en 70 s y **opencode** no arranca (sin modelo configurado): los dos siguen sin marca. |
 | **Skills de ECC en agy** | Diagnosticado y **no es del proyecto**: codex tiene 209 skills en `~/.codex/skills` y su `ecc-install-state.json`; agy solo una en `~/.gemini/skills` y ningún estado de instalación. ECC nunca se instaló para agy. |
 | **Captura real con agentes** | La landing usa una recreación generada con codex, etiquetada como tal. Falta lanzar dos o tres agentes de verdad y capturar. |
 | **Repositorio público** | Decisión del usuario. Mientras sea privado, la descarga de la release solo le sirve a él. Ya se comprobó que no hay secretos en el historial. |

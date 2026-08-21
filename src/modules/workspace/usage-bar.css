@@ -1,0 +1,56 @@
+/* Gasto por CLI en la fila de abajo. Ningun color propio: todo de tokens.css.
+ *
+ * La regla que manda aqui es que la fila NO crece. Nada de esto declara altura
+ * ni relleno vertical: la barra de estado ya fija la suya y todo se centra
+ * dentro. Si algo de aqui empujara hacia arriba o hacia abajo, esta mal. */
+
+.usage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+  /* Sin encogerse: al abrir varios agentes, las barras no se aplastan. */
+  flex: 0 0 auto;
+}
+
+.usage__name {
+  color: var(--fg-dim);
+}
+
+/* Fina y corta a proposito: tiene que caber en el pie sin pedir sitio. */
+.usage__bar {
+  position: relative;
+  width: 42px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.usage__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 220ms ease-out;
+}
+
+.usage__num {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+  /* Sitio fijo para tres caracteres: sin esto, pasar de 9% a 10% empuja lo
+     que tiene al lado y la fila entera da un salto. */
+  min-width: 30px;
+  text-align: right;
+}
+
+/* Queda poco. Se avisa con el color de error, que es el que ya usa la app
+   para «esto necesita tu atencion». */
+.usage.is-apurado .usage__fill {
+  background: var(--state-error);
+}
+
+.usage.is-apurado .usage__num {
+  color: var(--state-error);
+}

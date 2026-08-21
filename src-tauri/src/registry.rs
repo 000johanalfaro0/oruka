@@ -20,9 +20,9 @@ pub struct CliManifest {
     pub resume: Vec<String>,
     #[serde(default)]
     pub prompt: Option<PromptSpec>,
-    /// Como reconocer en su salida cuantos tokens lleva gastados.
+    /// Como reconocer en su salida lo que lleva gastado.
     #[serde(default)]
-    pub tokens: Option<TokenSpec>,
+    pub usage: Option<UsageSpec>,
     /// Rol de fabrica frente a los demas agentes.
     ///
     /// Es un valor por defecto, igual que los modos: el usuario lo cambia y su
@@ -42,9 +42,24 @@ pub struct CliManifest {
 /// No se usa una expresion regular para no arrastrar esa dependencia por algo
 /// tan simple: con la marca y el primer numero que venga detras basta.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TokenSpec {
-    /// Texto literal que aparece justo antes de la cifra.
-    pub after: String,
+pub struct UsageSpec {
+    /// Texto literal que acompaña a la cifra.
+    pub marker: String,
+    /// Donde esta la cifra respecto a la marca: "after" o "before".
+    ///
+    /// Hacen falta las dos. claude escribe "You've used 82% of your weekly
+    /// limit", con la cifra detras; codex escribe "100% context left", con la
+    /// cifra delante. Suponer solo una de las dos deja fuera a la mitad.
+    pub number: String,
+    /// "percent" o "tokens". Cambia como se pinta, no como se busca.
+    pub unit: String,
+    /// Que es esa cifra, en cristiano. Va junto a la barra.
+    pub label: String,
+    /// "used" si sube al gastar, "left" si baja.
+    ///
+    /// No es cosmetico: con "left" la barra se llena al reves, y el aviso de
+    /// que queda poco salta en el extremo contrario.
+    pub direction: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,6 +110,11 @@ pub struct DetectedCli {
     /// Lo necesita el front para proponer un reparto sin inventarselo. Un CLI
     /// sin rol declarado no sale en la pantalla de roles.
     pub role: Option<crate::roles::RoleSpec>,
+    /// Como lee este CLI su propio gasto, si lo publica.
+    ///
+    /// Lo necesita el front para pintar la barra con su etiqueta y su sentido.
+    /// Un CLI que no diga nada no tiene barra, en vez de tener una a cero.
+    pub usage: Option<UsageSpec>,
 }
 
 /// Manifiestos de fabrica.
@@ -201,6 +221,7 @@ pub fn detect_all() -> Vec<DetectedCli> {
             let mut modes: Vec<String> = m.modes.keys().cloned().collect();
             modes.sort();
             let role = m.roles.clone();
+            let usage = m.usage.clone();
             DetectedCli {
                 id: m.id,
                 name: m.name,
@@ -211,6 +232,7 @@ pub fn detect_all() -> Vec<DetectedCli> {
                 modes,
                 can_resume: !m.resume.is_empty(),
                 role,
+                usage,
             }
         })
         .collect()

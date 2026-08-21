@@ -76,6 +76,11 @@ impl Scrollback {
 pub struct TokenScan {
     /// La marca declarada en el manifiesto. Vacia = este CLI no lo publica.
     marca: String,
+    /// Si la cifra va delante de la marca en vez de detras.
+    ///
+    /// claude escribe "You've used 82% of your weekly limit" y codex escribe
+    /// "100% context left". Sin esto, codex no se lee nunca.
+    antes: bool,
     /// Final del trozo anterior, para no perder marcas partidas.
     cola: String,
     /// Lo ultimo leido. Es un total, no una suma: el CLI ya acumula.
@@ -86,9 +91,10 @@ pub struct TokenScan {
 const COLA: usize = 64;
 
 impl TokenScan {
-    fn new(marca: Option<String>) -> Self {
+    fn new(marca: Option<String>, antes: bool) -> Self {
         TokenScan {
             marca: marca.unwrap_or_default(),
+            antes,
             ..Default::default()
         }
     }
@@ -99,7 +105,11 @@ impl TokenScan {
             return None;
         }
         let unido = format!("{}{}", self.cola, texto);
-        let encontrado = ultimo_valor(&unido, &self.marca);
+        let encontrado = if self.antes {
+            ultimo_valor_antes(&unido, &self.marca)
+        } else {
+            ultimo_valor(&unido, &self.marca)
+        };
 
         // La cola se guarda siempre, haya habido suerte o no. Se corta por una
         // frontera de caracter, que si no un acento partido rompe la cadena.
@@ -136,6 +146,49 @@ fn ultimo_valor(texto: &str, marca: &str) -> Option<u64> {
         desde = inicio;
     }
     mejor
+}
+
+/// El ultimo numero que PRECEDE a la marca dentro del texto.
+///
+/// Se mira hacia atras desde la marca, saltando lo que haya en medio (un signo
+/// de porcentaje, espacios, secuencias de escape) hasta dar con los digitos.
+fn ultimo_valor_antes(texto: &str, marca: &str) -> Option<u64> {
+    let mut mejor = None;
+    let mut desde = 0;
+    while let Some(pos) = texto[desde..].find(marca) {
+        let fin = desde + pos;
+        if let Some(n) = numero_hacia_atras(&texto[..fin]) {
+            mejor = Some(n);
+        }
+        desde = fin + marca.len();
+    }
+    mejor
+}
+
+/// Los digitos que cierran un texto, saltando lo que no sean digitos.
+///
+/// El limite es corto a proposito: si la cifra no esta pegada a la marca, no es
+/// la nuestra y colarla seria peor que no dar ninguna.
+fn numero_hacia_atras(texto: &str) -> Option<u64> {
+    let bytes = texto.as_bytes();
+    let mut i = bytes.len();
+    let suelo = bytes.len().saturating_sub(16);
+    // Saltar lo que haya entre la cifra y la marca: "% ", espacios, etc.
+    while i > suelo && !bytes[i - 1].is_ascii_digit() {
+        i -= 1;
+    }
+    if i == suelo || i == 0 {
+        return None;
+    }
+    let fin = i;
+    while i > 0 && (bytes[i - 1].is_ascii_digit() || bytes[i - 1] == b',' || bytes[i - 1] == b'.') {
+        i -= 1;
+    }
+    let crudo: String = texto[i..fin]
+        .chars()
+        .filter(|c| c.is_ascii_digit())
+        .collect();
+    crudo.parse::<u64>().ok()
 }
 
 /// El primer numero de un texto, saltando lo que haya en medio.
@@ -248,6 +301,7 @@ impl PtyManager {
         cols: u16,
         rows: u16,
         tokens: Option<String>,
+        tokens_antes: bool,
     ) -> Result<(), String> {
         let pair: PtyPair = NativePtySystem::default()
             .openpty(PtySize {
@@ -287,7 +341,7 @@ impl PtyManager {
         let reader_scrollback = scrollback.clone();
         let event = format!("pty:{id}");
         let token_event = format!("pty-tokens:{id}");
-        let mut scan = TokenScan::new(tokens);
+        let mut scan = TokenScan::new(tokens, tokens_antes);
         let reader_app = app.clone();
         std::thread::spawn(move || {
             let mut buf = [0u8; 8192];
@@ -549,6 +603,40 @@ mod tests {
     #[test]
     fn sin_la_marca_no_hay_cifra() {
         assert_eq!(ultimo_valor("no dice nada de eso", "tokens used"), None);
+    }
+
+    #[test]
+    fn lee_la_cifra_cuando_va_delante_de_la_marca() {
+        // Asi lo escribe codex: "100% context left". Buscar solo detras de la
+        // marca dejaba a codex sin barra para siempre.
+        assert_eq!(ultimo_valor_antes("100% context left", "% context left"), Some(100));
+        assert_eq!(
+            ultimo_valor_antes("tab to queue message42% context left", "% context left"),
+            Some(42)
+        );
+    }
+
+    #[test]
+    fn se_queda_con_la_ultima_lectura_tambien_hacia_atras() {
+        // El porcentaje va cambiando; interesa el actual, no el primero visto.
+        let texto = "80% context left ... trabajo ... 55% context left";
+        assert_eq!(ultimo_valor_antes(texto, "% context left"), Some(55));
+    }
+
+    #[test]
+    fn una_cifra_lejos_de_la_marca_no_cuenta() {
+        // Si no esta pegada, no es la nuestra: mejor sin barra que con un
+        // numero inventado.
+        let lejos = format!("42{}% context left", " ".repeat(40));
+        assert_eq!(ultimo_valor_antes(&lejos, "% context left"), None);
+    }
+
+    #[test]
+    fn el_lector_hacia_atras_avisa_solo_cuando_cambia() {
+        let mut scan = TokenScan::new(Some("% context left".into()), true);
+        assert_eq!(scan.push("100% context left"), Some(100));
+        assert_eq!(scan.push("100% context left"), None, "el mismo no se repite");
+        assert_eq!(scan.push("98% context left"), Some(98));
         // La marca esta pero el numero queda lejisimos: no es el suyo.
         let lejos = format!("tokens used{}42", " ".repeat(60));
         assert_eq!(ultimo_valor(&lejos, "tokens used"), None);
@@ -557,7 +645,7 @@ mod tests {
     /// La trampa de verdad: la marca partida entre dos lecturas del PTY.
     #[test]
     fn una_marca_partida_entre_dos_trozos_no_se_pierde() {
-        let mut scan = TokenScan::new(Some("tokens used".into()));
+        let mut scan = TokenScan::new(Some("tokens used".into()), false);
         assert_eq!(scan.push("trabajando... tok"), None);
         assert_eq!(scan.push("ens used 4321\r\n"), Some(4321));
     }
@@ -565,7 +653,7 @@ mod tests {
     /// Solo avisa cuando el numero cambia, para no inundar al front.
     #[test]
     fn solo_avisa_cuando_el_numero_cambia() {
-        let mut scan = TokenScan::new(Some("tokens used".into()));
+        let mut scan = TokenScan::new(Some("tokens used".into()), false);
         assert_eq!(scan.push("tokens used 100"), Some(100));
         assert_eq!(scan.push(" mas salida sin contador"), None);
         assert_eq!(scan.push("tokens used 100"), None, "el mismo no se repite");
@@ -575,7 +663,7 @@ mod tests {
     /// Un CLI que no declara marca no gasta nada en esto.
     #[test]
     fn sin_marca_declarada_el_escaner_no_hace_nada() {
-        let mut scan = TokenScan::new(None);
+        let mut scan = TokenScan::new(None, false);
         assert_eq!(scan.push("tokens used 999"), None);
         assert_eq!(scan.total, None);
     }

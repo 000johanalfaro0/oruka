@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useContextMenu, type MenuItem } from '@/shared/ContextMenu'
-import { onAgentTokens, revealInExplorer } from '@/lib/agents'
+import { revealInExplorer } from '@/lib/agents'
 import { AgentTerminal } from './AgentTerminal'
 import { MAX_AGENTS, useWorkspaceStore, type OpenProject } from './workspaceStore'
 
@@ -13,35 +13,9 @@ import { MAX_AGENTS, useWorkspaceStore, type OpenProject } from './workspaceStor
 export function AgentGrid({ project }: { project: OpenProject }) {
   const clis = useWorkspaceStore((s) => s.clis)
 
-  /**
-   * Lo gastado por cada agente, tal y como el propio CLI lo publica.
-   *
-   * Se escucha aqui y no dentro de la terminal porque la barra necesita
-   * comparar: lo interesante en una rejilla de cuatro no es el numero suelto,
-   * es quien esta consumiendo mas.
-   */
-  const [tokens, setTokens] = useState<Record<string, number>>({})
-
-  useEffect(() => {
-    const bajas: Array<() => void> = []
-    let vivo = true
-    // Se usa `project.agents` y no la variable de abajo: el array de
-    // dependencias se evalua durante el render, y `agents` aun no existe ahi.
-    for (const agent of project.agents) {
-      void onAgentTokens(agent.sessionId, (total) => {
-        setTokens((prev) => ({ ...prev, [agent.sessionId]: total }))
-      }).then((off) => {
-        if (vivo) bajas.push(off)
-        else off()
-      })
-    }
-    return () => {
-      vivo = false
-      bajas.forEach((off) => off())
-    }
-  }, [project.agents])
-
-  const mayorGasto = Math.max(1, ...Object.values(tokens))
+  // El gasto ya no se escucha aqui. Vive en el almacen, fuera de React: el
+  // shell desmonta esta ventana al cambiar de modulo, y la barra del pie tiene
+  // que seguir leyendo mientras miras GitHub o Ideas.
   const addAgent = useWorkspaceStore((s) => s.addAgent)
   const removeAgent = useWorkspaceStore((s) => s.removeAgent)
   const [picking, setPicking] = useState(false)
@@ -164,7 +138,6 @@ export function AgentGrid({ project }: { project: OpenProject }) {
                 <span className="panel__dot" />
                 <span className="panel__title">{agent.cliName}</span>
                 <span className="panel__mode">{agent.mode}</span>
-                <Tokens total={tokens[agent.sessionId]} mayor={mayorGasto} />
                 <button
                   className="panel__close"
                   onClick={() => void removeAgent(agent.sessionId)}
@@ -188,35 +161,4 @@ export function AgentGrid({ project }: { project: OpenProject }) {
       {menu}
     </div>
   )
-}
-
-/**
- * Lo que lleva gastado un agente en esta sesion.
- *
- * La barra se mide contra el que mas gasta de la rejilla, no contra un tope
- * absoluto: ningun CLI publica cual es su limite, asi que inventarse uno seria
- * mentir. Comparar entre paneles si dice algo cierto, y en una rejilla de
- * cuatro es justo lo que se quiere saber.
- *
- * Si el CLI no publica su contador no se pinta nada, ni un cero: un cero se lee
- * como «no gasta», y lo cierto es «no lo dice».
- */
-function Tokens({ total, mayor }: { total?: number; mayor: number }) {
-  if (total === undefined) return null
-  const parte = Math.min(1, total / mayor)
-  return (
-    <span className="panel__tokens" data-tip={`${total.toLocaleString('es')} tokens en esta sesión`}>
-      <span className="panel__tokens-num">{corto(total)}</span>
-      <span className="panel__tokens-bar" aria-hidden="true">
-        <span style={{ width: `${parte * 100}%` }} />
-      </span>
-    </span>
-  )
-}
-
-/** 33245 se lee peor que 33,2k en una cabecera de dos centimetros. */
-function corto(n: number): string {
-  if (n < 1000) return String(n)
-  if (n < 1_000_000) return `${(n / 1000).toFixed(1).replace('.0', '')}k`
-  return `${(n / 1_000_000).toFixed(1).replace('.0', '')}M`
 }
