@@ -52,5 +52,13 @@
     "unit": "percent",
     "label": "de contexto",
     "direction": "left"
+  },
+  "install": {
+    "command": "npm",
+    "args": [
+      "install",
+      "-g",
+      "@openai/codex"
+    ]
   }
 }

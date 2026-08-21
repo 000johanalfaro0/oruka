@@ -35,5 +35,13 @@
     "file": "AGENTS.md",
     "role": "Verificador",
     "brief": "Prueba lo que hacen los demás: tests, casos límite y reproducción de fallos."
+  },
+  "install": {
+    "command": "npm",
+    "args": [
+      "install",
+      "-g",
+      "opencode-ai"
+    ]
   }
 }

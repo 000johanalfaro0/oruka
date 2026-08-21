@@ -56,3 +56,58 @@
 .setup__back:hover { background: var(--hover); color: var(--fg); }
 .setup__next { padding: 4px 16px; font-size: var(--fs-sm); background: var(--accent); color: var(--accent-fg); border-radius: var(--radius); }
 .setup__next:hover { filter: brightness(1.1); }
+
+/* --- Instalar o actualizar un CLI desde el primer paso --- */
+.setup__install {
+  margin-left: 10px;
+  padding: 2px 10px;
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.setup__install:hover:not(:disabled) { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.setup__install:disabled { opacity: 0.45; cursor: default; }
+
+/* El comando a la vista antes de ejecutarse. */
+.setup__confirm {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+.setup__confirm p { margin: 0 0 8px; font-size: var(--fs-xs); color: var(--fg-muted); }
+.setup__confirm code {
+  display: block;
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--fg);
+  background: var(--bg-editor);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  white-space: pre;
+}
+.setup__confirm-acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+.setup__cancel, .setup__go { padding: 4px 12px; font-size: var(--fs-xs); border-radius: var(--radius); cursor: pointer; }
+.setup__cancel { color: var(--fg-muted); background: none; border: 1px solid var(--border); }
+.setup__go { color: var(--accent-fg); background: var(--accent); border: 1px solid var(--accent); }
+
+/* La salida del comando, recortada al final que es donde esta el resultado. */
+.setup__salida {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  max-height: 120px;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+  background: var(--bg-editor);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+}
+.setup__salida.is-mal { color: var(--state-error); border-color: var(--state-error); }

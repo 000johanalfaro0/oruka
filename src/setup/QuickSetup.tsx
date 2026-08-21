@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { detectClis, type DetectedCli } from '@/lib/agents'
+import { detectClis, installCli, type DetectedCli } from '@/lib/agents'
 import { githubStatus, type GithubStatus } from '@/lib/github'
 import { McpMatrix } from '@/shared/McpMatrix'
 import { RolesPanel } from '@/shared/RolesPanel'
@@ -24,6 +24,32 @@ export function QuickSetup({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0)
   const [clis, setClis] = useState<DetectedCli[] | null>(null)
   const [gh, setGh] = useState<GithubStatus | null>(null)
+  /** Que CLI se esta instalando ahora, si hay alguno. */
+  const [instalando, setInstalando] = useState<string | null>(null)
+  /** El comando que se va a ejecutar, esperando confirmacion. */
+  const [confirmar, setConfirmar] = useState<DetectedCli | null>(null)
+  const [salida, setSalida] = useState<{ id: string; texto: string; mal: boolean } | null>(null)
+
+  /**
+   * Instala o actualiza un CLI y vuelve a mirar el PATH.
+   *
+   * Se redetecta al terminar en vez de fiarse: es la unica forma de saber si
+   * de verdad quedo instalado, y de que salga su version nueva.
+   */
+  const instalar = async (c: DetectedCli) => {
+    setConfirmar(null)
+    setInstalando(c.id)
+    setSalida(null)
+    try {
+      const texto = await installCli(c.id)
+      setSalida({ id: c.id, texto: texto.trim().slice(-400) || 'Listo.', mal: false })
+      setClis(await detectClis())
+    } catch (e) {
+      setSalida({ id: c.id, texto: String(e).slice(-400), mal: true })
+    } finally {
+      setInstalando(null)
+    }
+  }
 
   useEffect(() => {
     void detectClis().then(setClis)
@@ -60,7 +86,8 @@ export function QuickSetup({ onDone }: { onDone: () => void }) {
             <>
               <h2 className="setup__title">CLIs de IA en este equipo</h2>
               <p className="setup__hint">
-                Oruka funciona con los que tengas. No hace falta instalar nada más.
+                Oruka funciona con los que tengas. Si te falta alguno, puedes instalarlo desde
+                aquí; verás el comando exacto antes de que se ejecute.
               </p>
               {!clis && <p className="setup__pending">Buscando en el PATH…</p>}
               <ul className="setup__clis">
@@ -72,9 +99,44 @@ export function QuickSetup({ onDone }: { onDone: () => void }) {
                     />
                     <span className="setup__cli-name">{c.name}</span>
                     <span className="setup__cli-version">{c.version ?? 'no encontrado'}</span>
+                    {/* Sin comando declarado no hay boton. agy es un binario
+                        nativo con instalador propio: ofrecerlo seria mentir. */}
+                    {c.install && (
+                      <button
+                        className="setup__install"
+                        disabled={instalando !== null}
+                        onClick={() => setConfirmar(c)}
+                      >
+                        {instalando === c.id ? 'Instalando…' : c.found ? 'Actualizar' : 'Instalar'}
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
+              {/* Nada se ejecuta sin que el usuario haya leido el comando:
+                  instalar algo en el equipo es mas serio que escribir en un
+                  archivo de configuracion. */}
+              {confirmar && (
+                <div className="setup__confirm">
+                  <p>Se va a ejecutar en tu equipo, y puede tardar unos minutos:</p>
+                  <code>
+                    {confirmar.install!.command} {confirmar.install!.args.join(' ')}
+                  </code>
+                  <div className="setup__confirm-acts">
+                    <button className="setup__cancel" onClick={() => setConfirmar(null)}>
+                      Cancelar
+                    </button>
+                    <button className="setup__go" onClick={() => void instalar(confirmar)}>
+                      Ejecutar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {salida && (
+                <pre className={`setup__salida${salida.mal ? ' is-mal' : ''}`}>{salida.texto}</pre>
+              )}
+
               {clis && (
                 <p className="setup__summary">
                   {found.length} de {clis.length} detectados

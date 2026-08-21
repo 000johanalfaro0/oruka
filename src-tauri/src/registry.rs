@@ -30,6 +30,25 @@ pub struct CliManifest {
     /// en el reparto, que es lo correcto para un CLI propio recien anadido.
     #[serde(default)]
     pub roles: Option<crate::roles::RoleSpec>,
+    /// Como se instala este CLI, si sabemos hacerlo.
+    ///
+    /// Es dato y no codigo a proposito: cada uno se instala distinto (npm,
+    /// instalador propio, binario nativo) y adivinarlo seria peor que no
+    /// ofrecerlo. **Un manifiesto sin este campo no ofrece instalarse**, que es
+    /// lo honesto cuando no sabemos el comando.
+    #[serde(default)]
+    pub install: Option<InstallSpec>,
+}
+
+/// El comando exacto que instala un CLI.
+///
+/// El usuario lo ve entero antes de que se ejecute: instalar algo en el equipo
+/// es mas serio que escribir en un archivo de configuracion.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstallSpec {
+    pub command: String,
+    #[serde(default)]
+    pub args: Vec<String>,
 }
 
 /// Donde mirar para saber el gasto de una sesion.
@@ -115,6 +134,9 @@ pub struct DetectedCli {
     /// Lo necesita el front para pintar la barra con su etiqueta y su sentido.
     /// Un CLI que no diga nada no tiene barra, en vez de tener una a cero.
     pub usage: Option<UsageSpec>,
+    /// El comando que lo instalaria, si se sabe. La interfaz lo enseña antes
+    /// de ejecutarlo y no ofrece boton a quien no lo declare.
+    pub install: Option<InstallSpec>,
 }
 
 /// Manifiestos de fabrica.
@@ -222,6 +244,7 @@ pub fn detect_all() -> Vec<DetectedCli> {
             modes.sort();
             let role = m.roles.clone();
             let usage = m.usage.clone();
+            let install = m.install.clone();
             DetectedCli {
                 id: m.id,
                 name: m.name,
@@ -233,9 +256,54 @@ pub fn detect_all() -> Vec<DetectedCli> {
                 can_resume: !m.resume.is_empty(),
                 role,
                 usage,
+                install,
             }
         })
         .collect()
+}
+
+/// Instala un CLI ejecutando lo que declare su manifiesto.
+///
+/// Devuelve la salida completa, con lo bueno y lo malo juntos: cuando una
+/// instalacion falla, el motivo casi siempre esta en la salida de error, y
+/// tragarsela dejaria al usuario con un "no se pudo" sin nada mas.
+///
+/// No inventa nada. Si el manifiesto no declara como instalarse, se dice y ya.
+pub fn install(id: &str) -> Result<String, String> {
+    let m = manifest(id).ok_or_else(|| format!("no hay manifiesto para {id}"))?;
+    let spec = m
+        .install
+        .ok_or_else(|| format!("{} no declara como instalarse", m.name))?;
+
+    // En Windows npm y npx son shims .cmd, que CreateProcess no ejecuta: hay
+    // que pasar por cmd.exe. Es la misma trampa que con los CLIs de agente.
+    let mut cmd = if cfg!(windows) {
+        let mut c = Command::new("cmd");
+        c.arg("/C").arg(&spec.command);
+        c
+    } else {
+        Command::new(&spec.command)
+    };
+    cmd.args(&spec.args);
+    hide_console(&mut cmd);
+
+    let salida = cmd
+        .output()
+        .map_err(|e| format!("no se pudo lanzar {}: {e}", spec.command))?;
+    let texto = format!(
+        "{}{}",
+        String::from_utf8_lossy(&salida.stdout),
+        String::from_utf8_lossy(&salida.stderr)
+    );
+    if salida.status.success() {
+        Ok(texto)
+    } else {
+        Err(if texto.trim().is_empty() {
+            format!("la instalacion fallo con codigo {:?}", salida.status.code())
+        } else {
+            texto
+        })
+    }
 }
 
 /// Devuelve el manifiesto de un CLI por su id.

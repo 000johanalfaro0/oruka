@@ -32,6 +32,7 @@ pub fn run() {
             store_remove,
             store_seed,
             detect_clis,
+            install_cli,
             github_status,
             github_repos,
             github_repo_for_path,
@@ -418,6 +419,19 @@ async fn mcp_apply(cli_id: String, server: mcp::McpServer, remove: bool) -> Resu
 #[tauri::command]
 async fn mcp_revert(cli_id: String) -> Result<String, String> {
     mcp::revert(&cli_id)
+}
+
+/// Instala o actualiza un CLI con el comando que declare su manifiesto.
+///
+/// Es el mismo comando para las dos cosas: `npm install -g` trae la ultima
+/// version tanto si no habia nada como si habia una vieja. Por eso no hay dos
+/// comandos ni dos campos, solo dos etiquetas en la interfaz.
+///
+/// Async porque lanza un proceso y espera: un comando sincrono corre en el hilo
+/// de la interfaz y congelaria la ventana entera mientras npm baja paquetes.
+#[tauri::command]
+async fn install_cli(cli_id: String) -> Result<String, String> {
+    registry::install(&cli_id)
 }
 
 /// Que archivos de rol cambiarian en este proyecto, sin escribir nada.

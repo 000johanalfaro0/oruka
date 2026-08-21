@@ -46,5 +46,13 @@
     "unit": "percent",
     "label": "del límite semanal",
     "direction": "used"
+  },
+  "install": {
+    "command": "npm",
+    "args": [
+      "install",
+      "-g",
+      "@anthropic-ai/claude-code"
+    ]
   }
 }

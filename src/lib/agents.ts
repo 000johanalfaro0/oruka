@@ -39,6 +39,17 @@ export interface DetectedCli {
     label: string
     direction: 'used' | 'left'
   } | null
+  /**
+   * El comando que lo instala, si su manifiesto lo declara.
+   *
+   * El mismo comando sirve para instalar y para actualizar: `npm install -g`
+   * trae la ultima version tanto si no habia nada como si habia una vieja. Lo
+   * que cambia es la etiqueta del boton, no el comando.
+   *
+   * Un CLI que no lo declare no ofrece boton. Es lo honesto: agy es un binario
+   * nativo con instalador propio y adivinarlo seria peor que no ofrecerlo.
+   */
+  install: { command: string; args: string[] } | null
 }
 
 export interface ProjectEntry {
@@ -48,6 +59,14 @@ export interface ProjectEntry {
 }
 
 export const detectClis = () => invoke<DetectedCli[]>('detect_clis')
+
+/**
+ * Instala o actualiza un CLI. Devuelve la salida del comando.
+ *
+ * Puede tardar minutos: npm baja paquetes. Quien llame tiene que enseñar que
+ * esta trabajando, o parece que la app se ha colgado.
+ */
+export const installCli = (cliId: string) => invoke<string>('install_cli', { cliId })
 
 export const listProjects = (root: string) => invoke<ProjectEntry[]>('list_projects', { root })
 
