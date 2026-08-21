@@ -27,6 +27,133 @@ pub struct McpServer {
     /// justo lo que no queremos provocar.
     #[serde(rename = "requiresEnv", default)]
     pub requires_env: Vec<String>,
+    /// El programa que este servidor necesita para arrancar, si no es `npx`.
+    ///
+    /// Casi todo el catalogo va con `npx`, que viene con Node y siempre esta.
+    /// Pero uno puede necesitar otra cosa —Browser Use necesita `uv`— y sin
+    /// ella el reparto escribe una configuracion que no arranca nunca. Peor que
+    /// no repartirlo: el usuario cree que lo tiene.
+    #[serde(default)]
+    pub requires: Option<Requires>,
+}
+
+/// De que depende un servidor para poder arrancar.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Requires {
+    /// El ejecutable que tiene que estar en el PATH.
+    pub bin: String,
+    /// Como se llama para una persona.
+    pub name: String,
+    /// Id del paquete en cada gestor. Sin el, solo queda enseñar la web.
+    #[serde(default)]
+    pub winget: Option<String>,
+    #[serde(default)]
+    pub brew: Option<String>,
+    pub url: String,
+}
+
+/// Si a un servidor le falta su programa base en este equipo.
+///
+/// Se mira el PATH, que es la unica verdad: que el JSON lo declare no significa
+/// que este instalado.
+#[derive(Debug, Serialize)]
+pub struct MissingRequirement {
+    pub server_id: String,
+    pub name: String,
+    pub bin: String,
+    pub url: String,
+    /// Si Oruka sabe instalarlo en este sistema.
+    pub installable: bool,
+}
+
+/// Lo que le falta al catalogo para funcionar en este equipo.
+pub fn missing() -> Vec<MissingRequirement> {
+    catalog()
+        .into_iter()
+        .filter_map(|s| {
+            let r = s.requires?;
+            if crate::registry::resolve_bin(&r.bin).is_some() {
+                return None;
+            }
+            let installable = if cfg!(windows) {
+                r.winget.is_some()
+            } else if cfg!(target_os = "macos") {
+                r.brew.is_some()
+            } else {
+                false
+            };
+            Some(MissingRequirement {
+                server_id: s.id,
+                name: r.name,
+                bin: r.bin,
+                url: r.url,
+                installable,
+            })
+        })
+        .collect()
+}
+
+/// Instala el programa base que le falta a un servidor.
+pub fn install_requirement(server_id: &str) -> Result<String, String> {
+    let s = catalog()
+        .into_iter()
+        .find(|s| s.id == server_id)
+        .ok_or_else(|| format!("no hay ningun servidor {server_id}"))?;
+    let r = s
+        .requires
+        .ok_or_else(|| format!("{} no depende de nada que instalar", s.name))?;
+
+    let (bin, args): (&str, Vec<String>) = if cfg!(windows) {
+        let id = r.winget.ok_or_else(|| {
+            format!("{} hay que instalarlo a mano: {}", r.name, r.url)
+        })?;
+        (
+            "winget",
+            vec![
+                "install".into(),
+                "--id".into(),
+                id,
+                "-e".into(),
+                "--accept-source-agreements".into(),
+                "--accept-package-agreements".into(),
+            ],
+        )
+    } else if cfg!(target_os = "macos") {
+        let id = r.brew.ok_or_else(|| {
+            format!("{} hay que instalarlo a mano: {}", r.name, r.url)
+        })?;
+        ("brew", vec!["install".into(), id])
+    } else {
+        return Err(format!("{} hay que instalarlo a mano: {}", r.name, r.url));
+    };
+
+    let mut cmd = if cfg!(windows) {
+        let mut c = std::process::Command::new("cmd");
+        c.arg("/C").arg(bin);
+        c
+    } else {
+        std::process::Command::new(bin)
+    };
+    cmd.args(&args);
+    crate::registry::hide_console(&mut cmd);
+
+    let salida = cmd
+        .output()
+        .map_err(|e| format!("no se pudo lanzar {bin}: {e}"))?;
+    let texto = format!(
+        "{}{}",
+        String::from_utf8_lossy(&salida.stdout),
+        String::from_utf8_lossy(&salida.stderr)
+    );
+    if salida.status.success() {
+        Ok(texto)
+    } else {
+        Err(if texto.trim().is_empty() {
+            format!("fallo con codigo {:?}", salida.status.code())
+        } else {
+            texto
+        })
+    }
 }
 
 /// Como queda un CLI respecto a MCP.
@@ -246,6 +373,38 @@ pub fn revert(cli_id: &str) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn quien_necesita_algo_lo_declara_y_quien_no_no() {
+        // La mayoria va con npx, que viene con Node y siempre esta. Declarar
+        // una dependencia que no existe llenaria la pantalla de avisos falsos.
+        let cat = catalog();
+        let con = cat.iter().filter(|s| s.requires.is_some()).count();
+        assert!(con >= 1, "browser-use deberia declarar que necesita uv");
+        for s in &cat {
+            if let Some(r) = &s.requires {
+                assert!(!r.bin.is_empty(), "{} declara una dependencia sin binario", s.id);
+                assert!(r.url.starts_with("http"), "{} necesita una web donde mirar", s.id);
+            }
+            if s.command == "npx" {
+                assert!(s.requires.is_none(), "{} va con npx y no necesita nada", s.id);
+            }
+        }
+    }
+
+    #[test]
+    fn solo_falta_lo_que_no_esta_en_el_path() {
+        // missing() mira el PATH de verdad. Lo que se comprueba aqui es que no
+        // se cuela nada que si este instalado: un aviso falso hace que el
+        // usuario deje de leerlos.
+        for m in missing() {
+            assert!(
+                crate::registry::resolve_bin(&m.bin).is_none(),
+                "{} dice faltar pero esta en el PATH",
+                m.bin
+            );
+        }
+    }
 
     #[test]
     fn un_comando_normal_no_se_toca() {

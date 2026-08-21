@@ -59,6 +59,8 @@ pub fn run() {
             reveal_in_explorer,
             save_prompt,
             mcp_catalog,
+            mcp_missing,
+            mcp_install_requirement,
             mcp_state,
             mcp_preview,
             mcp_apply,
@@ -452,6 +454,18 @@ async fn mcp_apply(cli_id: String, server: mcp::McpServer, remove: bool) -> Resu
 #[tauri::command]
 async fn mcp_revert(cli_id: String) -> Result<String, String> {
     mcp::revert(&cli_id)
+}
+
+/// Que servidores del catalogo no pueden arrancar en este equipo.
+#[tauri::command]
+async fn mcp_missing() -> Vec<mcp::MissingRequirement> {
+    mcp::missing()
+}
+
+/// Instala el programa base que le falta a un servidor.
+#[tauri::command]
+async fn mcp_install_requirement(server_id: String) -> Result<String, String> {
+    mcp::install_requirement(&server_id)
 }
 
 /// Instala o actualiza un CLI con el comando que declare su manifiesto.

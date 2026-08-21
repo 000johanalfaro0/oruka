@@ -6,8 +6,11 @@ import {
   mcpPreview,
   mcpRevert,
   mcpState,
+  mcpMissing,
+  mcpInstallRequirement,
   type CliMcpState,
   type McpServer,
+  type MissingRequirement,
 } from '@/lib/mcp'
 import './mcp-matrix.css'
 
@@ -35,6 +38,29 @@ export function McpMatrix() {
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /**
+   * Servidores que no podrian arrancar en este equipo.
+   *
+   * Repartir uno al que le falta su programa base es peor que no ofrecerlo:
+   * queda escrito en la configuracion del CLI y el usuario cree que lo tiene,
+   * cuando en realidad falla en silencio al arrancar.
+   */
+  const [faltan, setFaltan] = useState<MissingRequirement[]>([])
+  const [instalando, setInstalando] = useState<string | null>(null)
+
+  const instalarBase = async (m: MissingRequirement) => {
+    setInstalando(m.server_id)
+    setError(null)
+    try {
+      await mcpInstallRequirement(m.server_id)
+      setFaltan(await mcpMissing())
+      setNote(m.name + ' instalado.')
+    } catch (e) {
+      setError(String(e).slice(-400))
+    } finally {
+      setInstalando(null)
+    }
+  }
 
   const refresh = useCallback(async (ids: string[]) => {
     setStates(await mcpState(ids))
@@ -43,7 +69,12 @@ export function McpMatrix() {
   useEffect(() => {
     void (async () => {
       try {
-        const [cat, detected] = await Promise.all([mcpCatalog(), detectClis()])
+        const [cat, detected, sinBase] = await Promise.all([
+          mcpCatalog(),
+          detectClis(),
+          mcpMissing(),
+        ])
+        setFaltan(sinBase)
         const usable = detected.filter((c) => c.found)
         setCatalog(cat)
         setClis(usable)
@@ -208,6 +239,30 @@ export function McpMatrix() {
         })}
       </div>
 
+      {/* Lo que no podria arrancar aunque se reparta. Va antes que el resto
+          porque decide si repartirlo tiene sentido siquiera. */}
+      {faltan.map((m) => (
+        <div key={m.server_id} className="mcp__falta">
+          <i className="codicon codicon-warning" aria-hidden="true" />
+          <span>
+            <strong>{catalog.find((c) => c.id === m.server_id)?.name ?? m.server_id}</strong> no
+            arrancará: le falta <code>{m.name}</code> en este equipo.
+          </span>
+          {m.installable ? (
+            <button
+              className="mcp__falta-btn"
+              disabled={instalando !== null}
+              onClick={() => void instalarBase(m)}
+            >
+              {instalando === m.server_id ? 'Instalando…' : `Instalar ${m.name}`}
+            </button>
+          ) : (
+            <a className="mcp__falta-btn" href={m.url} target="_blank" rel="noreferrer">
+              Cómo instalarlo
+            </a>
+          )}
+        </div>
+      ))}
       {note && <p className="mcp__note">{note}</p>}
       {error && <p className="mcp__error">{error}</p>}
 

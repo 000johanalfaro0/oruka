@@ -104,6 +104,7 @@ mod tests {
             command: "npx".into(),
             args: vec!["-y".into(), "@modelcontextprotocol/server-github".into()],
             requires_env: vec!["GITHUB_PERSONAL_ACCESS_TOKEN".into()],
+            requires: None,
         }
     }
 

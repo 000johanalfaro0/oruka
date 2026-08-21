@@ -96,6 +96,7 @@ mod tests {
             command: "npx".into(),
             args: vec!["-y".into(), format!("@scope/{id}")],
             requires_env: Vec::new(),
+            requires: None,
         }
     }
 

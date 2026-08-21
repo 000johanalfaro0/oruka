@@ -9,5 +9,12 @@
     "browser-use",
     "--mcp"
   ],
-  "requiresEnv": []
+  "requiresEnv": [],
+  "requires": {
+    "bin": "uvx",
+    "name": "uv",
+    "winget": "astral-sh.uv",
+    "brew": "uv",
+    "url": "https://docs.astral.sh/uv/"
+  }
 }
