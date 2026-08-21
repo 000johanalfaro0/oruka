@@ -47,14 +47,23 @@ export function McpMatrix() {
    */
   const [faltan, setFaltan] = useState<MissingRequirement[]>([])
   const [instalando, setInstalando] = useState<string | null>(null)
+  /**
+   * Lo que se acaba de instalar en esta sesion.
+   *
+   * Hace falta porque un proceso NO se entera de que su PATH ha cambiado: el
+   * instalador deja el programa en su sitio y actualiza el PATH del sistema,
+   * pero Oruka sigue con el que tenia al arrancar. Sin esto, el aviso de que
+   * falta seguia ahi despues de instalarlo y parecia que no habia funcionado.
+   */
+  const [reciente, setReciente] = useState<string[]>([])
 
   const instalarBase = async (m: MissingRequirement) => {
     setInstalando(m.server_id)
     setError(null)
     try {
       await mcpInstallRequirement(m.server_id)
-      setFaltan(await mcpMissing())
-      setNote(m.name + ' instalado.')
+      setReciente((prev) => [...prev, m.server_id])
+      setNote(null)
     } catch (e) {
       setError(String(e).slice(-400))
     } finally {
@@ -242,13 +251,28 @@ export function McpMatrix() {
       {/* Lo que no podria arrancar aunque se reparta. Va antes que el resto
           porque decide si repartirlo tiene sentido siquiera. */}
       {faltan.map((m) => (
-        <div key={m.server_id} className="mcp__falta">
-          <i className="codicon codicon-warning" aria-hidden="true" />
+        <div
+          key={m.server_id}
+          className={`mcp__falta${reciente.includes(m.server_id) ? ' is-listo' : ''}`}
+        >
+          <i
+            className={`codicon codicon-${reciente.includes(m.server_id) ? 'check' : 'warning'}`}
+            aria-hidden="true"
+          />
           <span>
-            <strong>{catalog.find((c) => c.id === m.server_id)?.name ?? m.server_id}</strong> no
-            arrancará: le falta <code>{m.name}</code> en este equipo.
+            <strong>{catalog.find((c) => c.id === m.server_id)?.name ?? m.server_id}</strong>{' '}
+            {reciente.includes(m.server_id) ? (
+              <>
+                ya tiene <code>{m.name}</code>. Reinicia Oruka para que lo vea: un programa no se
+                entera de que su PATH ha cambiado mientras está abierto.
+              </>
+            ) : (
+              <>
+                no arrancará: le falta <code>{m.name}</code> en este equipo.
+              </>
+            )}
           </span>
-          {m.installable ? (
+          {reciente.includes(m.server_id) ? null : m.installable ? (
             <button
               className="mcp__falta-btn"
               disabled={instalando !== null}

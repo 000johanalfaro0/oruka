@@ -82,10 +82,17 @@
 .mcp__falta .codicon { color: var(--state-error); font-size: 14px; }
 .mcp__falta strong { color: var(--fg); font-weight: 500; }
 .mcp__falta code { font-family: var(--font-mono); color: var(--fg-dim); }
+/* El aviso puede envolver: en una ventana estrecha el boton se iba al borde
+   y quedaba pegado a la barra de tareas, medio fuera de la vista. */
+.mcp__falta { flex-wrap: wrap; }
+
 .mcp__falta-btn {
   margin-left: auto;
-  padding: 3px 10px;
-  font-size: var(--fs-xs);
+  /* Mas alto y mas ancho que una casilla de la matriz. Con el mismo tamano y
+     el mismo azul se leia como una casilla mas, no como algo que pulsar. */
+  padding: 6px 14px;
+  font-size: var(--fs-sm);
+  font-weight: 500;
   color: var(--accent-fg);
   background: var(--accent);
   border: 0;
@@ -93,5 +100,13 @@
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
+  /* Se despega del borde y del resto: es la unica accion de esta fila. */
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
+.mcp__falta-btn:hover:not(:disabled) { filter: brightness(1.12); }
+.mcp__falta-btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+/* Ya instalado: el aviso deja de ser una alarma y pasa a ser una instruccion. */
+.mcp__falta.is-listo { border-color: var(--border); }
+.mcp__falta.is-listo .codicon { color: var(--state-done); }
 .mcp__falta-btn:disabled { opacity: 0.5; cursor: default; }
