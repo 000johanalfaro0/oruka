@@ -23,6 +23,13 @@ pub struct CliManifest {
     /// Como reconocer en su salida cuantos tokens lleva gastados.
     #[serde(default)]
     pub tokens: Option<TokenSpec>,
+    /// Rol de fabrica frente a los demas agentes.
+    ///
+    /// Es un valor por defecto, igual que los modos: el usuario lo cambia y su
+    /// version es la que se escribe. Un manifiesto sin este campo no participa
+    /// en el reparto, que es lo correcto para un CLI propio recien anadido.
+    #[serde(default)]
+    pub roles: Option<crate::roles::RoleSpec>,
 }
 
 /// Donde mirar para saber el gasto de una sesion.
@@ -83,6 +90,11 @@ pub struct DetectedCli {
     /// Lo necesita la interfaz para no ofrecer «continuar» a un CLI que no
     /// puede: un boton que siempre falla es peor que no tener boton.
     pub can_resume: bool,
+    /// Rol de fabrica, si el manifiesto lo trae.
+    ///
+    /// Lo necesita el front para proponer un reparto sin inventarselo. Un CLI
+    /// sin rol declarado no sale en la pantalla de roles.
+    pub role: Option<crate::roles::RoleSpec>,
 }
 
 /// Manifiestos de fabrica.
@@ -188,6 +200,7 @@ pub fn detect_all() -> Vec<DetectedCli> {
             let version = path.as_ref().and_then(|p| read_version(p, &m.version_args()));
             let mut modes: Vec<String> = m.modes.keys().cloned().collect();
             modes.sort();
+            let role = m.roles.clone();
             DetectedCli {
                 id: m.id,
                 name: m.name,
@@ -197,6 +210,7 @@ pub fn detect_all() -> Vec<DetectedCli> {
                 version,
                 modes,
                 can_resume: !m.resume.is_empty(),
+                role,
             }
         })
         .collect()

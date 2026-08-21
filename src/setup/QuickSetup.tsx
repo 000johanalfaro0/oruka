@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { detectClis, type DetectedCli } from '@/lib/agents'
 import { githubStatus, type GithubStatus } from '@/lib/github'
 import { McpMatrix } from '@/shared/McpMatrix'
+import { RolesPanel } from '@/shared/RolesPanel'
 import { storeGet, storeRemove, storeSet } from '@/lib/store'
 import './setup.css'
 
@@ -11,7 +12,7 @@ export async function isSetupDone(): Promise<boolean> {
   return (await storeGet(STORAGE_KEY)) === '1'
 }
 
-const STEPS = ['CLIs', 'GitHub', 'MCP', 'Listo'] as const
+const STEPS = ['CLIs', 'GitHub', 'MCP', 'Roles', 'Listo'] as const
 
 /**
  * Quick Setup del primer arranque.
@@ -127,6 +128,18 @@ export function QuickSetup({ onDone }: { onDone: () => void }) {
           )}
 
           {step === 3 && (
+            <>
+              <h2 className="setup__title">Roles de los agentes</h2>
+              <p className="setup__hint">
+                Si dos agentes trabajan sobre los mismos archivos, hoy son dos desconocidos que se
+                pisan. Oruka puede dejarle a cada uno un papel escrito en el archivo que ese CLI ya
+                lee, y decirle que los demás existen.
+              </p>
+              <RolesPanel />
+            </>
+          )}
+
+          {step === 4 && (
             <>
               <h2 className="setup__title">Listo</h2>
               <p className="setup__hint">

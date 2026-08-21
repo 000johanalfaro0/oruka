@@ -17,6 +17,14 @@ export interface DetectedCli {
    * siempre falla es peor que no tener botón.
    */
   can_resume: boolean
+  /**
+   * Rol de fabrica que declara su manifiesto, si trae uno.
+   *
+   * Se escribe con la forma en crudo, y no importando RoleSpec de roles.ts,
+   * para no cerrar un ciclo entre los dos modulos: roles.ts ya depende de
+   * este.
+   */
+  role: { file: string; role: string; brief: string } | null
 }
 
 export interface ProjectEntry {

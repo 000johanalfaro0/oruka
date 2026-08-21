@@ -2,19 +2,42 @@
   "id": "claude",
   "name": "Claude Code",
   "icon": "claude",
-  "detect": { "bin": "claude", "versionArgs": ["--version"] },
-  "launch": { "args": [], "cwd": "process" },
+  "detect": {
+    "bin": "claude",
+    "versionArgs": [
+      "--version"
+    ]
+  },
+  "launch": {
+    "args": [],
+    "cwd": "process"
+  },
   "modes": {
     "default": [],
-    "yolo": ["--dangerously-skip-permissions"],
-    "plan": ["--permission-mode", "plan"]
+    "yolo": [
+      "--dangerously-skip-permissions"
+    ],
+    "plan": [
+      "--permission-mode",
+      "plan"
+    ]
   },
-  "resume": ["--continue"],
-  "prompt": { "via": "arg", "flag": "--prompt-interactive" },
+  "resume": [
+    "--continue"
+  ],
+  "prompt": {
+    "via": "arg",
+    "flag": "--prompt-interactive"
+  },
   "mcp": {
     "format": "claude-json",
     "path": "~/.claude.json",
     "key": "mcpServers",
     "sessionFlag": "--mcp-config"
+  },
+  "roles": {
+    "file": "CLAUDE.md",
+    "role": "Arquitecto",
+    "brief": "Diseña antes de tocar, revisa lo que escriben los demás y mantiene la coherencia del conjunto."
   }
 }

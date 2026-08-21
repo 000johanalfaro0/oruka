@@ -10,6 +10,7 @@ mod ports;
 mod projects;
 mod pty;
 pub mod registry;
+mod roles;
 mod store;
 
 use std::path::PathBuf;
@@ -59,6 +60,9 @@ pub fn run() {
             mcp_preview,
             mcp_apply,
             mcp_revert,
+            roles_plan,
+            roles_apply,
+            roles_revert,
             list_projects,
             agent_spawn,
             agent_write,
@@ -398,6 +402,36 @@ async fn mcp_apply(cli_id: String, server: mcp::McpServer, remove: bool) -> Resu
 #[tauri::command]
 async fn mcp_revert(cli_id: String) -> Result<String, String> {
     mcp::revert(&cli_id)
+}
+
+/// Que archivos de rol cambiarian en este proyecto, sin escribir nada.
+///
+/// El front manda la lista de agentes ya resuelta: quien participa lo decide
+/// el usuario con los CLIs que tiene instalados, no este modulo.
+#[tauri::command]
+async fn roles_plan(
+    project: String,
+    agents: Vec<roles::RoleAgent>,
+) -> Result<Vec<roles::RoleChange>, String> {
+    Ok(roles::plan(std::path::Path::new(&project), &agents))
+}
+
+/// Escribe el reparto de roles. Devuelve los archivos tocados.
+#[tauri::command]
+async fn roles_apply(
+    project: String,
+    agents: Vec<roles::RoleAgent>,
+) -> Result<Vec<String>, String> {
+    roles::apply(std::path::Path::new(&project), &agents)
+}
+
+/// Quita el bloque de roles y deja los archivos como estaban.
+#[tauri::command]
+async fn roles_revert(
+    project: String,
+    agents: Vec<roles::RoleAgent>,
+) -> Result<Vec<String>, String> {
+    roles::revert(std::path::Path::new(&project), &agents)
 }
 
 /// Abre una carpeta en el explorador de archivos del sistema.

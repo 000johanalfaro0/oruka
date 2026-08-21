@@ -3,6 +3,7 @@ import { bus } from '@/shell/bus'
 import { baseName } from '@/lib/paths'
 import { agentKill, detectClis, listProjects, type DetectedCli, type ProjectEntry } from '@/lib/agents'
 import { storeGet, storeSet } from '@/lib/store'
+import { syncProject } from '@/lib/roles'
 
 /** Regla estructural: como mucho 4 agentes por proyecto. */
 export const MAX_AGENTS = 4
@@ -208,6 +209,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         open: [...s.open, { path, name: baseName(path), agents: [] }],
         activePath: path,
       }))
+      // Reparto de roles al abrir la carpeta, si el usuario lo tiene activado.
+      // No se espera a que termine: abrir una pestana no puede quedarse
+      // colgada de una escritura a disco. Solo al abrirla por primera vez;
+      // volver a una pestana ya abierta no reescribe nada.
+      void syncProject(path, get().clis).catch((e) =>
+        // Tragarse esto dejaria archivos sin escribir sin que nadie lo sepa.
+        set({ error: `no se pudieron escribir los roles: ${String(e)}` }),
+      )
     } else {
       set({ activePath: path })
     }

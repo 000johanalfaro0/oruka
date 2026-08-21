@@ -14,6 +14,7 @@ propio.
 | `resume` | Argumentos para reanudar la ultima sesion |
 | `prompt` | Como se le entrega un prompt inicial. Es lo que permite "Idea -> Agente" |
 | `mcp` | Formato y destino de su configuracion MCP, o `unsupported` |
+| `roles` | Archivo que ese CLI lee dentro del proyecto y su papel por defecto frente a los demas agentes. Es un valor de fabrica, como los modos: el usuario lo cambia desde el Quick Setup. Un manifiesto sin este campo no participa en el reparto |
 
 ## Estado
 

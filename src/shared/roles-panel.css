@@ -1,0 +1,127 @@
+/* Reparto de roles. Ningun color se define aqui: todo sale de tokens.css. */
+
+.roles {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.roles__pending,
+.roles__error {
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.roles__error {
+  color: var(--state-error);
+}
+
+.roles__toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  cursor: pointer;
+}
+
+.roles__toggle span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.roles__toggle strong {
+  font-size: var(--fs-md);
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.roles__toggle small {
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+  line-height: 1.5;
+}
+
+.roles__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.roles__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-editor);
+}
+
+/* Apartado del reparto: sigue visible, pero se lee como apagado. */
+.roles__item.is-off {
+  opacity: 0.5;
+}
+
+.roles__who {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.roles__name {
+  font-size: var(--fs-sm);
+  color: var(--fg);
+}
+
+.roles__file {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--fg-dim);
+  margin-left: auto;
+}
+
+.roles__role,
+.roles__brief {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--fg);
+  font-size: var(--fs-xs);
+  font-family: inherit;
+}
+
+.roles__role:focus,
+.roles__brief:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.roles__role:disabled,
+.roles__brief:disabled {
+  color: var(--fg-muted);
+  cursor: not-allowed;
+}
+
+.roles__summary {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+  line-height: 1.6;
+}
+
+.roles__summary code {
+  font-family: var(--font-mono);
+  color: var(--fg-dim);
+}

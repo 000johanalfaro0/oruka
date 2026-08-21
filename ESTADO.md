@@ -195,6 +195,10 @@ comentarios: romperlos deja a alguien sin su herramienta.
     en rutas de disco: `gh api /user/repos` acaba pidiendo
     `C:/Program Files/Git/user/repos`. Solo afecta al probar a mano desde esa
     shell; Rust llama al binario sin shell. Sin la barra inicial funciona.
+24. **`codex` y `opencode` leen el mismo `AGENTS.md`.** Un bloque de roles por
+    CLI ahí sería una escritura y un borrado. Por eso el bloque es **uno solo
+    con la lista entera** y los destinos se agrupan por nombre de archivo, no
+    por CLI. De paso es lo que se quería: cada agente ve a los demás.
 
 ---
 
@@ -238,18 +242,6 @@ servicios de fondo, que se actualice solo cuando salga una versión nueva.
 
 ## Qué falta, por orden
 
-### Bloqueando
-
-**La app se cae al cerrar un agente** (visto con opencode). **Sin diagnosticar.**
-No hay panic a la vista porque release lleva `panic = "abort"` y `strip`, así que
-el proceso muere en seco. Para verlo hay que reproducirlo en desarrollo:
-
-    RUST_BACKTRACE=1 npm run app 2>&1 | tee ~/oruka-dev.log
-
-Sospecha sin confirmar: `kill()` mata solo el proceso directo, y opencode y codex
-son shims `.cmd` lanzados con `cmd.exe /C`, así que muere `cmd.exe` y el `node`
-nieto sobrevive agarrado al PTY.
-
 ### Sin verificar a mano (escrito y en verde, nunca probado en la app)
 
 Pesa más que lo que falta por hacer: hay mucho código nuevo que nadie ha visto
@@ -264,6 +256,10 @@ funcionar contra datos reales.
 - Las barras de gasto por agente.
 - Que ya no salga la consola negra al entrar en Ajustes, ni se congele.
 - El repintado de la terminal al volver a una pestaña.
+- El reparto de roles: que al abrir una carpeta aparezcan los `.md` con el
+  bloque, que abrirla otra vez no cambie nada, y que revertir deje el archivo
+  exactamente como estaba. **Escribe en el repositorio del usuario**: es lo que
+  más cuidado merece de todo lo de esta lista.
 
 **Color de los agentes: sin cerrar.** Se declaran `TERM`, `COLORTERM` y
 `FORCE_COLOR`, y `cargo run --example color_check` demuestra que codex, agy y
@@ -317,7 +313,7 @@ Al terminar, borrar los repositorios de pruebas.
 |---|---|
 | **0router** | Investigado, sin empezar. Es un **servidor local** al que apuntan los CLIs, no un agente: no va en `packages/adapters/`. Su sitio es una sección propia que lo detecte, lo arranque y configure a los CLIs, reutilizando la escritura segura de MCP. Falta confirmar **CLI por CLI** cómo se le indica un servidor propio. No está instalado en el equipo. |
 | **Auto-actualización** | Sin empezar. Con la release publicada, encaja en GitHub Releases. Es lo que hace que otra persona reciba versiones nuevas sin enterarse. |
-| **Roles entre agentes** | Idea a explorar. Ver «Hacia dónde va la app». |
+| **Roles entre agentes** | **Escrito, sin probar en la app.** Cada CLI recibe su papel en el archivo que ya lee (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`), como un **bloque delimitado**: lo que está fuera de las marcas no se toca nunca. Viene **apagado**; se activa en el paso «Roles» del Quick Setup, que solo ofrece los CLIs instalados y deja cambiar el papel de cada uno. Se dispara al abrir una carpeta. Falta: llevarlo también a Ajustes |
 | **Marcas de tokens** | Solo **codex** declara la suya. Falta ver qué escriben claude, agy y opencode y añadirla a sus manifiestos. |
 | **Skills de ECC en agy** | Diagnosticado y **no es del proyecto**: codex tiene 209 skills en `~/.codex/skills` y su `ecc-install-state.json`; agy solo una en `~/.gemini/skills` y ningún estado de instalación. ECC nunca se instaló para agy. |
 | **Captura real con agentes** | La landing usa una recreación generada con codex, etiquetada como tal. Falta lanzar dos o tres agentes de verdad y capturar. |
