@@ -51,7 +51,7 @@ fn render(path: &Path, server: &McpServer, remove: bool) -> Result<String, Strin
     root.set_implicit(true);
 
     let mut entry = Table::new();
-    entry["command"] = toml_edit::value(server.command.clone());
+    entry["command"] = toml_edit::value(super::resolve_command(&server.command));
 
     let mut args = Array::new();
     for a in &server.args {

@@ -211,6 +211,18 @@ comentarios: romperlos deja a alguien sin su herramienta.
 27. **Escuchar el gasto dentro de un componente no vale.** El shell desmonta el
     módulo inactivo (trampa 18), así que la barra del pie se congelaría en
     cuanto miraras GitHub. La suscripción vive en el almacén, fuera de React.
+28. **Pencil escribe en los mismos archivos que Oruka, y sin red.** Su
+    extensión se configura sola en `~/.claude.json`, `~/.codex/config.toml` y
+    la config de opencode —los tres que toca el módulo MCP— sin copia previa ni
+    diff. No hace nada malo, pero dos escritores con criterios distintos sobre
+    el mismo archivo es justo el escenario para el que existen las cuatro
+    protecciones. Si algo aparece o desaparece de la matriz de MCP sin que
+    nadie lo haya tocado desde Oruka, mirar ahí antes de buscar un fallo.
+29. **El servidor de Pencil no es autónomo.** Su `--app` es el nombre de la
+    aplicación a la que se conecta (`visual_studio_code` para VS Code), así que
+    **necesita el editor abierto con Pencil dentro**. Lanzado suelto responde
+    «app connection is required» y se acabó. La ficha del catálogo asume
+    VS Code; con otro editor hay que cambiar ese argumento.
 
 ---
 

@@ -45,12 +45,13 @@ pub struct CliMcpState {
 
 /// Catalogo de fabrica.
 pub fn catalog() -> Vec<McpServer> {
-    const SOURCES: [&str; 5] = [
+    const SOURCES: [&str; 6] = [
         include_str!("../../../packages/mcp/github.json"),
         include_str!("../../../packages/mcp/context7.json"),
         include_str!("../../../packages/mcp/playwright.json"),
         include_str!("../../../packages/mcp/filesystem.json"),
         include_str!("../../../packages/mcp/memory.json"),
+        include_str!("../../../packages/mcp/pencil.json"),
     ];
     SOURCES
         .iter()
@@ -72,6 +73,84 @@ fn home() -> PathBuf {
         .or_else(|| std::env::var_os("HOME"))
         .map(PathBuf::from)
         .unwrap_or_default()
+}
+
+/// El sufijo del binario de este sistema, como lo nombran quienes publican uno
+/// por plataforma.
+fn platform_suffix() -> &'static str {
+    match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("windows", "aarch64") => "-windows-arm64.exe",
+        ("windows", _) => "-windows-x64.exe",
+        ("macos", "aarch64") => "-darwin-arm64",
+        ("macos", _) => "-darwin-x64",
+        ("linux", "aarch64") => "-linux-arm64",
+        ("linux", _) => "-linux-x64",
+        _ => "",
+    }
+}
+
+/// Resuelve un comando que depende de la maquina.
+///
+/// Casi todo el catalogo se lanza con `npx` y no necesita nada de esto. Pero un
+/// servidor puede venir **dentro de otra aplicacion**, y entonces su ruta lleva
+/// la carpeta del usuario, la version instalada y el binario de su sistema. Eso
+/// no se puede escribir en el catalogo: es un archivo del repositorio y viaja a
+/// otras maquinas.
+///
+/// Tres marcas, ninguna atada a un servidor concreto:
+///
+/// - `~` al principio: la carpeta del usuario.
+/// - `{platform}`: el sufijo del binario de este sistema.
+/// - `*` en un tramo: se queda con la ultima coincidencia por orden
+///   alfabetico, que en una carpeta de versiones es la mas nueva.
+///
+/// Si no hay ninguna coincidencia se devuelve lo que habia. Escribir una ruta
+/// a medio resolver seria peor: el usuario ve en el diff que no cuadra y no
+/// aplica, en vez de creerse que quedo bien.
+pub fn resolve_command(raw: &str) -> String {
+    let con_home = match raw.strip_prefix("~/") {
+        Some(resto) => home().join(resto).to_string_lossy().replace('\\', "/"),
+        None => raw.to_string(),
+    };
+    let con_plataforma = con_home.replace("{platform}", platform_suffix());
+    if !con_plataforma.contains('*') {
+        return con_plataforma;
+    }
+
+    // El tramo con el comodin parte la ruta en tres: lo de antes (una carpeta
+    // que existe), el patron, y lo de despues.
+    let partes: Vec<&str> = con_plataforma.split('/').collect();
+    let Some(i) = partes.iter().position(|t| t.contains('*')) else {
+        return con_plataforma;
+    };
+    let base: PathBuf = partes[..i].join("/").into();
+    let (pre, post) = match partes[i].split_once('*') {
+        Some(par) => par,
+        None => return con_plataforma,
+    };
+
+    let Ok(entradas) = std::fs::read_dir(&base) else {
+        return con_plataforma;
+    };
+    let mut nombres: Vec<String> = entradas
+        .flatten()
+        .filter_map(|e| {
+            let n = e.file_name().to_string_lossy().to_string();
+            (n.starts_with(pre) && n.ends_with(post) && n.len() >= pre.len() + post.len())
+                .then_some(n)
+        })
+        .collect();
+    nombres.sort();
+    match nombres.pop() {
+        Some(elegido) => {
+            let mut ruta = base.join(elegido);
+            for tramo in &partes[i + 1..] {
+                ruta = ruta.join(tramo);
+            }
+            ruta.to_string_lossy().replace('\\', "/")
+        }
+        None => con_plataforma,
+    }
 }
 
 fn target_for(cli_id: &str) -> Target {
@@ -160,5 +239,76 @@ pub fn revert(cli_id: &str) -> Result<String, String> {
             safe_write::revert(&p).map(|b| b.to_string_lossy().to_string())
         }
         Target::Unsupported(reason) => Err(reason.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn un_comando_normal_no_se_toca() {
+        // Casi todo el catalogo es `npx`: si esto cambiara algo, la resolucion
+        // estaria metiendose donde no la llaman.
+        assert_eq!(resolve_command("npx"), "npx");
+        assert_eq!(resolve_command("/usr/bin/algo"), "/usr/bin/algo");
+    }
+
+    #[test]
+    fn la_virgulilla_se_convierte_en_la_carpeta_del_usuario() {
+        let salida = resolve_command("~/cosa");
+        assert!(!salida.starts_with('~'), "quedo sin resolver: {salida}");
+        assert!(salida.ends_with("/cosa"));
+    }
+
+    #[test]
+    fn el_comodin_elige_la_version_mas_nueva() {
+        let dir = std::env::temp_dir().join(format!(
+            "oruka-cmd-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        for v in ["app-0.6.9", "app-0.6.67", "app-0.7.1"] {
+            std::fs::create_dir_all(dir.join(v).join("out")).unwrap();
+        }
+        let patron = format!("{}/app-*/out/bin", dir.to_string_lossy().replace('\\', "/"));
+        let salida = resolve_command(&patron);
+        assert!(salida.contains("app-0.7.1"), "eligio mal: {salida}");
+        assert!(!salida.contains('*'));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn sin_coincidencia_se_devuelve_lo_que_habia() {
+        // Escribir una ruta a medio resolver seria peor: asi el usuario ve en
+        // el diff que no cuadra y no aplica.
+        let patron = "/no/existe/nada-*/bin";
+        assert_eq!(resolve_command(patron), patron);
+    }
+
+    #[test]
+    fn la_plataforma_se_sustituye_por_la_de_este_sistema() {
+        let salida = resolve_command("/x/mcp-server{platform}");
+        assert!(!salida.contains("{platform}"), "quedo sin sustituir");
+        assert!(salida.starts_with("/x/mcp-server"));
+    }
+
+    #[test]
+    fn la_ficha_de_pencil_resuelve_en_esta_maquina() {
+        // Si Pencil no esta instalado, la ruta se queda con el comodin y la
+        // interfaz lo ensena tal cual. Lo que no puede pasar es que se cuele
+        // media ruta como si fuera buena.
+        let p = catalog()
+            .into_iter()
+            .find(|s| s.id == "pencil")
+            .expect("pencil deberia estar en el catalogo");
+        let salida = resolve_command(&p.command);
+        assert!(!salida.contains("{platform}"));
+        assert!(
+            !salida.contains('*') || !std::path::Path::new(&salida).exists(),
+            "resolvio a algo que no existe"
+        );
     }
 }

@@ -30,7 +30,10 @@ pub fn list(path: &Path) -> Vec<String> {
 /// Como quedaria el fragmento de este servidor.
 fn entry(server: &McpServer) -> Value {
     let mut obj = Map::new();
-    obj.insert("command".into(), Value::String(server.command.clone()));
+    obj.insert(
+        "command".into(),
+        Value::String(super::resolve_command(&server.command)),
+    );
     obj.insert(
         "args".into(),
         Value::Array(server.args.iter().cloned().map(Value::String).collect()),

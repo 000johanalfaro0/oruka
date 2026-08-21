@@ -39,7 +39,7 @@ fn entry(server: &McpServer) -> Value {
     obj.insert("type".into(), Value::String("local".into()));
 
     // opencode junta binario y argumentos en un solo array.
-    let mut command = vec![Value::String(server.command.clone())];
+    let mut command = vec![Value::String(super::resolve_command(&server.command))];
     command.extend(server.args.iter().cloned().map(Value::String));
     obj.insert("command".into(), Value::Array(command));
 

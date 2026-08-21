@@ -1,0 +1,8 @@
+{
+  "id": "pencil",
+  "name": "Pencil",
+  "description": "Lienzo de diseno dentro del editor. Los agentes leen y modifican los .pen del proyecto. Necesita Pencil abierto: el servidor se conecta a el, no funciona suelto.",
+  "command": "~/.vscode/extensions/highagency.pencildev-*/out/mcp-server{platform}",
+  "args": ["--app", "visual_studio_code"],
+  "requiresEnv": []
+}
