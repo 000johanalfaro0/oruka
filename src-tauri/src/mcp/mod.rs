@@ -172,9 +172,10 @@ pub struct CliMcpState {
 
 /// Catalogo de fabrica.
 pub fn catalog() -> Vec<McpServer> {
-    const SOURCES: [&str; 7] = [
+    const SOURCES: [&str; 8] = [
         include_str!("../../../packages/mcp/github.json"),
         include_str!("../../../packages/mcp/context7.json"),
+        include_str!("../../../packages/mcp/browser-harness.json"),
         include_str!("../../../packages/mcp/playwright.json"),
         include_str!("../../../packages/mcp/filesystem.json"),
         include_str!("../../../packages/mcp/memory.json"),

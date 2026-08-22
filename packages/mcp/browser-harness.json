@@ -1,0 +1,8 @@
+{
+  "id": "browser-harness",
+  "name": "Browser Harness",
+  "description": "Control del navegador para agentes: interacción con páginas, snapshots semánticos y automatización.",
+  "command": "npx",
+  "args": ["-y", "@blopai/browser-harness"],
+  "requiresEnv": []
+}
