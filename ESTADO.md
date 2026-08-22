@@ -1,6 +1,6 @@
 # Oruka — estado del proyecto
 
-Última actualización: 2026-08-20
+Última actualización: 2026-08-22
 
 Orquestador desktop de agentes CLI. Ejecuta y supervisa varios agentes de IA
 locales en distintos proyectos, con GitHub y MCP integrados, y un bloc de ideas
@@ -265,6 +265,17 @@ comentarios: romperlos deja a alguien sin su herramienta.
     pagaba el renderizador por DOM sin motivo, y en un equipo modesto eso hunde
     la app. Va con red doble: si no hay aceleración, se deja el camino lento; y
     si se pierde el contexto (al suspender el portátil) se descarta el addon.
+37. **Un check de CI no tiene por qué venir de un workflow.** El token de `gh`
+    no tiene el scope `workflow` y GitHub rechaza subir nada bajo
+    `.github/workflows/` (responde 404), así que montar el CI del repo de
+    pruebas parecía bloqueado. No lo está: `gh pr checks` lee el
+    `statusCheckRollup`, que **junta los check-runs de Actions con los commit
+    statuses clásicos**, y esos se publican con
+    `gh api --method POST repos/OWNER/REPO/statuses/SHA -f state=... -f context=...`,
+    que solo pide `repo`. Oruka no distingue unos de otros: le llegan iguales
+    por `parse_checks`. Sirve para poblar el panel de comprobaciones sin tocar
+    el scope ni el navegador. Lo que **no** da es una ejecución real: no hay
+    logs ni reintento, solo el punto de color.
 
 ---
 
@@ -348,22 +359,14 @@ El plan completo está en
 - Repositorio público desechable `oruka-pruebas`.
 - Issue **#1**, asignado, para el panel de issues.
 - PR **#2** (`prueba-diff` → `main`), para la lista, el diff, fusionar y cerrar.
+- **Comprobaciones sobre el PR #2** (2026-08-22): una en verde (`pruebas/pasa`)
+  y otra en rojo (`pruebas/falla`). El rojo es el que hace falta para ver que
+  la confirmación de fusionar avisa: `PrReview.tsx:272` cuenta los `bucket ===
+  fail` y escribe «Ojo: N comprobación(es) en rojo».
 
 **Falta, y sin esto no se puede terminar:**
 
-1. **El CI**, para que el panel de comprobaciones tenga algo que enseñar. El
-   token de `gh` no tiene el scope `workflow` y GitHub rechaza subir el archivo
-   (responde 404). Dos caminos: completar `gh auth refresh -s workflow` **hasta
-   el paso del navegador**, o crear el archivo desde la web, que usa la sesión
-   del navegador y no necesita el scope:
-   `https://github.com/000johanalfaro0/oruka-pruebas/new/main?filename=.github/workflows/pruebas.yml`
-
-   Con dos trabajos, uno que pasa y otro que falla a propósito (`run: exit 0` y
-   `run: exit 1`). El rojo hace falta para comprobar que la confirmación de
-   fusionar avisa de las comprobaciones en rojo. Guardarlo **como pull request**,
-   no directo a `main`, o el CI no colgará de ningún PR.
-
-2. **Una segunda cuenta de GitHub.** No es opcional: **GitHub no deja aprobar tu
+1. **Una segunda cuenta de GitHub.** No es opcional: **GitHub no deja aprobar tu
    propio pull request**, así que con una sola cuenta el botón «Aprobar» no se
    puede probar nunca. Hace falta que la cuenta B:
    - acepte una invitación a `oruka-pruebas` y abra un PR **pidiendo revisión**;
@@ -371,7 +374,7 @@ El plan completo está en
      puebla dos pantallas hoy vacías: **invitaciones recibidas** y la pestaña
      **«Compartidos conmigo»**.
 
-3. **El instalador en una máquina limpia.** Para esto sí sirve un entorno virgen,
+2. **El instalador en una máquina limpia.** Para esto sí sirve un entorno virgen,
    y **Windows Sandbox** es la opción ligera: viene con este Windows 11 Pro, está
    disponible sin instalar y la virtualización está activa. Se borra al cerrarla,
    así que no vale para probar la persistencia entre reinicios.
@@ -464,11 +467,9 @@ release nueva. **Su fuente ya está en el repositorio**, en `docs/landing.html`.
 Lo que sí caduca es el **tamaño anunciado**: aparece cuatro veces en la página y
 hay que cambiarlo a mano cuando cambie el instalador. Hoy dice 2,00 MB.
 
-**Pendiente:** la release publicada (`v0.1.0`, del 19 de agosto) lleva el
-instalador de 1,38 MB, anterior a los roles, al gasto por CLI y a Pencil. La
-landing apunta a esa release, así que quien descargue hoy se lleva la versión
-vieja. Hay un instalador nuevo construido en
-`src-tauri/target/release/bundle/nsis/`, sin publicar.
+**Resuelto el 2026-08-22:** `v0.1.11` es la release `Latest`, así que
+`releases/latest` ya reparte el instalador al día. Lo único que sigue
+caducando a mano es el tamaño anunciado.
 
 ---
 
