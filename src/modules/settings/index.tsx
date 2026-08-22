@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CliSection } from './CliSection'
 import { relaunchSetup } from '@/setup/QuickSetup'
 import { McpMatrix } from '@/shared/McpMatrix'
+import { GithubAccount } from '@/shared/GithubAccount'
 import './settings.css'
 
 type Section = 'workspace' | 'clis' | 'mcp' | 'github' | 'apariencia'
@@ -65,11 +66,14 @@ export default function SettingsModule() {
           </section>
         )}
         {section === 'github' && (
-          <Panel
-            title="GitHub"
-            hint="Cuenta activa vía gh, o token propio si gh no está instalado."
-            pending="M2"
-          />
+          <section>
+            <h2 className="settings__title">GitHub</h2>
+            <p className="settings__hint">
+              Instala <code>gh</code> si falta y conecta tu cuenta sin salir de la app. Estaba solo
+              en el Quick Setup, y quien ya lo hubiera pasado se quedaba sin forma de llegar.
+            </p>
+            <GithubAccount />
+          </section>
         )}
         {section === 'apariencia' && (
           <Panel

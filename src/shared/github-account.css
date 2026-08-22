@@ -1,0 +1,101 @@
+/* Cuenta de GitHub. Ningun color propio: todo sale de tokens.css. */
+
+.gha {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gha__pending {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+}
+
+.gha__estado {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.gha__estado > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gha__estado strong {
+  font-size: var(--fs-md);
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.gha__scopes {
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+  line-height: 1.5;
+}
+
+.gha__estado .codicon {
+  font-size: 16px;
+  color: var(--state-error);
+  flex: 0 0 auto;
+}
+.gha__estado.is-ok .codicon { color: var(--state-done); }
+
+.gha__acts { display: flex; gap: 8px; }
+
+.gha__go {
+  padding: 7px 16px;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--accent-fg);
+  background: var(--accent);
+  border: 0;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.gha__go:hover:not(:disabled) { filter: brightness(1.12); }
+.gha__go:disabled { opacity: 0.55; cursor: default; }
+
+/* Al lado de una cuenta que ya funciona, comprobar no es la accion principal. */
+.gha__secundario {
+  margin-left: auto;
+  padding: 4px 12px;
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.gha__secundario:hover { color: var(--fg); background: var(--hover); }
+
+/* Lo que va escribiendo gh. Se recorta al final, que es donde esta el codigo. */
+.gha__log {
+  margin: 0;
+  padding: 8px 10px;
+  max-height: 130px;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+  background: var(--bg-editor);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+}
+
+.gha__nota {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--fg-dim);
+  line-height: 1.6;
+}
+.gha__nota code { font-family: var(--font-mono); }
