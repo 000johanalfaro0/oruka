@@ -11,7 +11,8 @@
     "lint": "eslint src",
     "tauri": "tauri",
     "app": "tauri dev",
-    "app:build": "tauri build"
+    "app:build": "tauri build",
+    "publicar": "node scripts/publicar.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
