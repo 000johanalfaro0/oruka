@@ -238,12 +238,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           .filter((a) => clis.some((c) => c.id === a.cliId && c.found))
           .map((a) => ({ ...a, resume: true })),
       }))
-      set({
-        clis,
-        roots: saved.roots,
-        open,
-        activePath: saved.activePath ?? open[0]?.path ?? null,
-      })
+      const activePath = saved.activePath ?? open[0]?.path ?? null
+      set({ clis, roots: saved.roots, open, activePath })
+      // Restaurar una pestana tambien es cambiar de proyecto para quien
+      // escuche. Sin esto, GitHub arrancaba creyendo que no hay ninguna
+      // carpeta abierta y no lo descubria hasta que cambiabas de pestana a
+      // mano.
+      bus.emit('workspace.projectChanged', { projectPath: activePath })
       // Los agentes restaurados tambien gastan: sin esto, sus barras se
       // quedaban vacias hasta que cerrabas y abrias el agente a mano.
       for (const p of open) {
