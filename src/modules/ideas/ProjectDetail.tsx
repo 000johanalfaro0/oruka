@@ -104,13 +104,67 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
     await repo.setStatus(project.id, next).catch((e) => setError(String(e)))
   }
 
+  /**
+   * El titulo mientras se edita, o null si no se esta editando.
+   *
+   * Se guarda aparte del proyecto para que cancelar sea posible: escribiendo
+   * directamente sobre el, salir a medias dejaria el cambio hecho.
+   */
+  const [editando, setEditando] = useState<string | null>(null)
+  /** Borrar se lo lleva todo, asi que se pide confirmar antes. */
+  const [borrando, setBorrando] = useState(false)
+  const [titulo, setTitulo] = useState(project.title)
+
+  const guardarTitulo = async () => {
+    const nuevo = (editando ?? '').trim()
+    setEditando(null)
+    if (!nuevo || nuevo === titulo) return
+    setTitulo(nuevo)
+    await repo.updateProject(project.id, { title: nuevo }).catch((e) => {
+      setError(String(e))
+      setTitulo(project.title)
+    })
+  }
+
+  const borrar = async () => {
+    try {
+      await repo.deleteProject(project.id)
+      onBack()
+    } catch (e) {
+      setError(String(e))
+      setBorrando(false)
+    }
+  }
+
   return (
     <div className="ipd">
       <header className="ipd__head">
         <button className="ipd__back" onClick={onBack} title="Volver a la lista">
           <i className="codicon codicon-arrow-left" aria-hidden="true" />
         </button>
-        <h2 className="ipd__title">{project.title}</h2>
+        {editando === null ? (
+          <h2
+            className="ipd__title ipd__title--editable"
+            onDoubleClick={() => setEditando(titulo)}
+            title="Doble clic para renombrar"
+          >
+            {titulo}
+          </h2>
+        ) : (
+          <input
+            className="ipd__title-input"
+            value={editando}
+            autoFocus
+            aria-label="Nombre del proyecto"
+            onChange={(e) => setEditando(e.target.value)}
+            onBlur={() => void guardarTitulo()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void guardarTitulo()
+              // Escapar cancela: por eso el borrador vive aparte del proyecto.
+              if (e.key === 'Escape') setEditando(null)
+            }}
+          />
+        )}
         <select
           className="ipd__status"
           value={status}
@@ -132,7 +186,33 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
           <i className="codicon codicon-copy" aria-hidden="true" />
           <span>Copiar prompt</span>
         </button>
+        {/* Borrar se lleva el proyecto y todas sus ideas. Por eso no ocurre de
+            un clic: primero se dice lo que va a pasar y cuanto se pierde. */}
+        <button
+          className="ipd__borrar"
+          onClick={() => setBorrando(true)}
+          title="Borrar este proyecto"
+        >
+          <i className="codicon codicon-trash" aria-hidden="true" />
+        </button>
       </header>
+
+      {borrando && (
+        <div className="ipd__confirmar">
+          <p>
+            Se borrará <strong>{titulo}</strong> y sus {ideas.length}{' '}
+            {ideas.length === 1 ? 'idea' : 'ideas'}. No se puede deshacer.
+          </p>
+          <div className="ipd__confirmar-acts">
+            <button className="ipd__cancelar" onClick={() => setBorrando(false)}>
+              Cancelar
+            </button>
+            <button className="ipd__confirmar-si" onClick={() => void borrar()}>
+              Borrar de todas formas
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="ipd__tabs" role="tablist">
         {(['crudas', 'organizado'] as const).map((t) => (
