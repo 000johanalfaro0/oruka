@@ -1,7 +1,6 @@
 import { Suspense, useEffect } from 'react'
 import { ModuleBar } from './ModuleBar'
 import { StatusBar } from './StatusBar'
-import { UpdateNotice } from './UpdateNotice'
 import { findModule } from './moduleRegistry'
 import { useShellStore } from './shellStore'
 import { bus } from './bus'
@@ -42,9 +41,6 @@ export function Shell() {
         </Suspense>
       </main>
       <StatusBar />
-      {/* Flota encima de todo: el aviso de version nueva no depende de en que
-          modulo estes, y aparecer no puede mover tu trabajo de sitio. */}
-      <UpdateNotice />
     </div>
   )
 }

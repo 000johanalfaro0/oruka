@@ -1,46 +1,63 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 import { check, type Update } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
 import './update-notice.css'
 
 /**
- * «Hay una version nueva».
+ * La version, y el aviso de que hay una nueva. En la barra de estado.
  *
- * La app pregunta al arrancar si existe algo mas reciente. Si lo hay, aparece
- * un aviso discreto abajo a la derecha; si no, no se pinta nada y el usuario ni
- * se entera de que se ha mirado.
+ * Estaba flotando en una esquina y se pedia aqui, junto al nombre del modulo:
+ * es donde la vista ya va a buscar el estado de la app.
  *
- * Tres decisiones que importan:
+ * Tres decisiones:
  *
- * 1. **No se actualiza sola.** Descargar y reiniciar en medio de tu trabajo,
- *    con agentes vivos en sus terminales, seria matarlos sin avisar. Se
- *    propone y decide el usuario.
- * 2. **Un fallo no se ve.** Si no hay red, o GitHub no responde, no pasa nada:
- *    el aviso simplemente no aparece. Molestar con un error por no haber podido
- *    comprobar algo que el usuario no ha pedido seria ruido.
- * 3. **Se puede posponer.** Cerrar el aviso lo calla hasta el proximo arranque.
+ * 1. **Se puede comprobar a mano.** Mirar solo al arrancar hace que un fallo
+ *    sea indistinguible de «no hay nada nuevo»: no se puede repetir la prueba
+ *    sin cerrar la app. Pulsando la version se comprueba en el momento.
+ * 2. **No se actualiza sola.** Descargar y reiniciar con agentes vivos en sus
+ *    terminales seria matarlos sin avisar. Se propone y decide la persona.
+ * 3. **El fallo se ve, pero solo si lo pediste.** Al arrancar, un error de red
+ *    se traga en silencio; si pulsaste tu, se dice lo que paso. Molestar por
+ *    algo que nadie pidio es ruido; callar algo que si pediste es peor.
  */
+type Estado =
+  | { que: 'quieto' }
+  | { que: 'mirando' }
+  | { que: 'aldia' }
+  | { que: 'hay'; update: Update }
+  | { que: 'bajando'; pct: string }
+  | { que: 'lista' }
+  | { que: 'error'; motivo: string }
+
 export function UpdateNotice() {
-  const [update, setUpdate] = useState<Update | null>(null)
-  const [estado, setEstado] = useState<'ofrecida' | 'bajando' | 'lista' | 'error'>('ofrecida')
-  const [detalle, setDetalle] = useState<string>('')
-  const [oculto, setOculto] = useState(false)
+  const [version, setVersion] = useState<string | null>(null)
+  const [estado, setEstado] = useState<Estado>({ que: 'quieto' })
 
   useEffect(() => {
-    void (async () => {
-      try {
-        const hay = await check()
-        if (hay) setUpdate(hay)
-      } catch {
-        // En silencio a proposito: ver el punto 2 de arriba.
-      }
-    })()
+    void invoke<string>('app_version')
+      .then(setVersion)
+      .catch(() => {})
   }, [])
 
-  if (!update || oculto) return null
+  const mirar = useCallback(async (aMano: boolean) => {
+    setEstado({ que: 'mirando' })
+    try {
+      const hay = await check()
+      setEstado(hay ? { que: 'hay', update: hay } : { que: 'aldia' })
+    } catch (e) {
+      // Al arrancar no se dice nada; si lo pediste tu, si.
+      setEstado(aMano ? { que: 'error', motivo: String(e).slice(-120) } : { que: 'quieto' })
+    }
+  }, [])
 
-  const instalar = async () => {
-    setEstado('bajando')
+  // Una mirada al arrancar. Silenciosa si falla.
+  useEffect(() => {
+    void mirar(false)
+  }, [mirar])
+
+  const instalar = async (update: Update) => {
+    setEstado({ que: 'bajando', pct: '' })
     try {
       let total = 0
       let hechos = 0
@@ -48,52 +65,58 @@ export function UpdateNotice() {
         if (ev.event === 'Started') total = ev.data.contentLength ?? 0
         if (ev.event === 'Progress') {
           hechos += ev.data.chunkLength
-          setDetalle(total ? `${Math.round((hechos / total) * 100)}%` : '')
+          setEstado({ que: 'bajando', pct: total ? `${Math.round((hechos / total) * 100)}%` : '' })
         }
-        if (ev.event === 'Finished') setDetalle('')
       })
-      setEstado('lista')
+      setEstado({ que: 'lista' })
     } catch (e) {
-      setEstado('error')
-      setDetalle(String(e).slice(-160))
+      setEstado({ que: 'error', motivo: String(e).slice(-120) })
     }
   }
 
   return (
-    <div className="upd" role="status">
-      <div className="upd__body">
-        <strong className="upd__title">
-          {estado === 'lista' ? 'Actualización lista' : `Oruka ${update.version} disponible`}
-        </strong>
-        <span className="upd__hint">
-          {estado === 'ofrecida' && `Tienes la ${update.currentVersion}.`}
-          {estado === 'bajando' && `Descargando… ${detalle}`}
-          {estado === 'lista' && 'Se aplica al reiniciar. Tus agentes se cerrarán.'}
-          {estado === 'error' && detalle}
+    <>
+      <button
+        className="statusbar__item upd__version"
+        onClick={() => void mirar(true)}
+        disabled={estado.que === 'mirando' || estado.que === 'bajando'}
+        title="Comprobar si hay una versión nueva"
+      >
+        v{version ?? '—'}
+      </button>
+
+      {estado.que === 'mirando' && <span className="statusbar__item upd__nota">comprobando…</span>}
+
+      {estado.que === 'aldia' && <span className="statusbar__item upd__nota">al día</span>}
+
+      {estado.que === 'hay' && (
+        <button
+          className="statusbar__item upd__hay"
+          onClick={() => void instalar(estado.update)}
+          title={`Descargar e instalar la ${estado.update.version}`}
+        >
+          <i className="codicon codicon-arrow-circle-up" aria-hidden="true" />
+          {estado.update.version} disponible
+        </button>
+      )}
+
+      {estado.que === 'bajando' && (
+        <span className="statusbar__item upd__nota">descargando… {estado.pct}</span>
+      )}
+
+      {estado.que === 'lista' && (
+        <button className="statusbar__item upd__hay" onClick={() => void relaunch()}>
+          <i className="codicon codicon-debug-restart" aria-hidden="true" />
+          Reiniciar para aplicar
+        </button>
+      )}
+
+      {estado.que === 'error' && (
+        <span className="statusbar__item upd__mal" title={estado.motivo}>
+          <i className="codicon codicon-warning" aria-hidden="true" />
+          no se pudo comprobar
         </span>
-      </div>
-      <div className="upd__acts">
-        {estado === 'ofrecida' && (
-          <>
-            <button className="upd__later" onClick={() => setOculto(true)}>
-              Ahora no
-            </button>
-            <button className="upd__go" onClick={() => void instalar()}>
-              Actualizar
-            </button>
-          </>
-        )}
-        {estado === 'lista' && (
-          <button className="upd__go" onClick={() => void relaunch()}>
-            Reiniciar
-          </button>
-        )}
-        {estado === 'error' && (
-          <button className="upd__later" onClick={() => setOculto(true)}>
-            Cerrar
-          </button>
-        )}
-      </div>
-    </div>
+      )}
+    </>
   )
 }
