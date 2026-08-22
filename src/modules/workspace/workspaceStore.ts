@@ -5,6 +5,8 @@ import {
   agentKill,
   detectClis,
   listProjects,
+  onAgentExit,
+  onAgentOutput,
   onAgentTokens,
   type DetectedCli,
   type ProjectEntry,
@@ -55,22 +57,55 @@ type Gasto = Record<string, number>
  * activo, asi que una suscripcion dentro de un componente se pierde al cambiar
  * de ventana y la barra del pie se quedaria congelada mirando a otro lado.
  */
-const escuchas = new Map<string, () => void>()
+const escuchas = new Map<string, Array<() => void>>()
+
+/**
+ * Que esta haciendo cada agente.
+ *
+ * Solo tres, y son los tres que se pueden saber de verdad mirando su salida.
+ * «Inactivo» y «esperando» son indistinguibles desde fuera —un agente parado y
+ * uno esperando tu respuesta callan igual—, asi que inventar esa diferencia
+ * seria decirle al usuario algo que no sabemos.
+ */
+export type Actividad = 'trabajando' | 'esperando' | 'terminado'
+
+/** Cuando escribio algo por ultima vez cada sesion. Fuera de React: cambia
+ *  cientos de veces por segundo y no puede provocar un repintado cada vez. */
+const ultimaSalida = new Map<string, number>()
+const terminadas = new Set<string>()
+
+/** Cuanto callar para dejar de considerarse «trabajando». */
+const SILENCIO_MS = 1200
 
 /** Empieza a escuchar el gasto de una sesion y lo guarda bajo su CLI. */
 function escuchar(sessionId: string, cliId: string, set: (g: (p: Gasto) => Gasto) => void) {
   if (escuchas.has(sessionId)) return
   // Se marca ya para que dos llamadas seguidas no abran dos suscripciones.
-  escuchas.set(sessionId, () => {})
+  escuchas.set(sessionId, [])
+  const guarda = (off: () => void) => escuchas.get(sessionId)?.push(off)
+
   void onAgentTokens(sessionId, (total) => {
     set((prev) => ({ ...prev, [cliId]: total }))
-  }).then((off) => escuchas.set(sessionId, off))
+  }).then(guarda)
+
+  // Solo se apunta la hora. Traducirlo a un estado y repintar lo hace el reloj
+  // de abajo, una vez cada medio segundo, en vez de con cada trozo de texto.
+  ultimaSalida.set(sessionId, Date.now())
+  void onAgentOutput(sessionId, () => {
+    ultimaSalida.set(sessionId, Date.now())
+  }).then(guarda)
+
+  void onAgentExit(sessionId, () => {
+    terminadas.add(sessionId)
+  }).then(guarda)
 }
 
 /** Deja de escuchar una sesion que ya no existe. */
 function dejar(sessionId: string) {
-  escuchas.get(sessionId)?.()
+  escuchas.get(sessionId)?.forEach((off) => off())
   escuchas.delete(sessionId)
+  ultimaSalida.delete(sessionId)
+  terminadas.delete(sessionId)
 }
 
 interface WorkspaceState {
@@ -81,6 +116,8 @@ interface WorkspaceState {
   clis: DetectedCli[]
   /** Lo que lleva gastado cada CLI, indexado por su id. */
   usage: Gasto
+  /** Que esta haciendo cada agente, indexado por su id de sesion. */
+  actividad: Record<string, Actividad>
   initialised: boolean
   loading: boolean
   error: string | null
@@ -178,6 +215,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   activePath: null,
   clis: [],
   usage: {},
+  actividad: {},
   loading: false,
   error: null,
 
@@ -341,3 +379,33 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
 export const useActiveProject = () =>
   useWorkspaceStore((s) => s.open.find((p) => p.path === s.activePath) ?? null)
+
+/**
+ * Traduce el silencio en estado, una vez cada medio segundo.
+ *
+ * Un solo reloj para toda la app, y **solo llama a `set` si algo cambio**: la
+ * salida de un agente llega cientos de veces por segundo, y repintar con cada
+ * trozo era justo lo que hacia ir lenta la interfaz en equipos modestos.
+ */
+setInterval(() => {
+  const { open, actividad } = useWorkspaceStore.getState()
+  const ahora = Date.now()
+  const siguiente: Record<string, Actividad> = {}
+  let cambio = false
+
+  for (const proyecto of open) {
+    for (const agente of proyecto.agents) {
+      const id = agente.sessionId
+      const estado: Actividad = terminadas.has(id)
+        ? 'terminado'
+        : ahora - (ultimaSalida.get(id) ?? 0) < SILENCIO_MS
+          ? 'trabajando'
+          : 'esperando'
+      siguiente[id] = estado
+      if (actividad[id] !== estado) cambio = true
+    }
+  }
+  // Tambien cambia si desaparecio un agente que estaba en la lista.
+  if (!cambio && Object.keys(actividad).length !== Object.keys(siguiente).length) cambio = true
+  if (cambio) useWorkspaceStore.setState({ actividad: siguiente })
+}, 500)

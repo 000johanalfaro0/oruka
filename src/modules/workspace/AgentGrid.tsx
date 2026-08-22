@@ -10,8 +10,16 @@ import { MAX_AGENTS, useWorkspaceStore, type OpenProject } from './workspaceStor
  * El layout se deriva de cuantos agentes hay: 1 ocupa todo, 2 se parten, 3 y 4
  * hacen cuadricula. Layout y agente son cosas distintas, como pedia el diseno.
  */
+/** Como se lee cada estado. El punto solo tiene color; esto lo explica. */
+const ROTULO: Record<string, string> = {
+  trabajando: 'Trabajando: está escribiendo ahora mismo',
+  esperando: 'En silencio: puede estar esperándote',
+  terminado: 'El proceso terminó',
+}
+
 export function AgentGrid({ project }: { project: OpenProject }) {
   const clis = useWorkspaceStore((s) => s.clis)
+  const actividad = useWorkspaceStore((s) => s.actividad)
 
   // El gasto ya no se escucha aqui. Vive en el almacen, fuera de React: el
   // shell desmonta esta ventana al cambiar de modulo, y la barra del pie tiene
@@ -135,7 +143,12 @@ export function AgentGrid({ project }: { project: OpenProject }) {
           {agents.map((agent) => (
             <section key={agent.sessionId} className="panel">
               <header className="panel__head" onContextMenu={(e) => openMenu(e, agentMenu(agent.sessionId))}>
-                <span className="panel__dot" />
+                {/* Lo unico que dice de un vistazo si un agente te esta
+                    esperando o sigue trabajando, sin abrir su terminal. */}
+                <span
+                  className={`panel__dot is-${actividad[agent.sessionId] ?? 'esperando'}`}
+                  title={ROTULO[actividad[agent.sessionId] ?? 'esperando']}
+                />
                 <span className="panel__title">{agent.cliName}</span>
                 <span className="panel__mode">{agent.mode}</span>
                 <button

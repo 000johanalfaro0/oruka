@@ -162,7 +162,32 @@
   flex: 0 0 auto;
 }
 
-.panel__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--state-idle); }
+/* El punto de estado. Era decorativo: siempre del mismo color, dijera lo que
+   dijera el agente. Ahora es lo unico que distingue de un vistazo un agente que
+   trabaja de uno que te esta esperando. */
+.panel__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--state-idle);
+  flex: 0 0 auto;
+  transition: background 200ms ease-out;
+}
+
+/* Trabajando: late, para que se distinga de un color fijo sin mirar dos veces. */
+.panel__dot.is-trabajando { background: var(--state-building); animation: latido 1.4s ease-in-out infinite; }
+.panel__dot.is-esperando { background: var(--state-idle); }
+.panel__dot.is-terminado { background: var(--state-error); }
+
+@keyframes latido {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* Quien pidio menos movimiento ve el color, no el latido. */
+@media (prefers-reduced-motion: reduce) {
+  .panel__dot.is-trabajando { animation: none; }
+}
 .panel__title { font-size: var(--fs-xs); color: var(--fg); }
 .panel__mode { font-size: var(--fs-xs); color: var(--fg-dim); flex: 1; }
 .panel__close { color: var(--fg-dim); display: flex; }
