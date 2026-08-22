@@ -167,6 +167,18 @@ comentarios: romperlos deja a alguien sin su herramienta.
     Todos van en diferido, así que el Workspace no existe en memoria hasta que
     se abre por primera vez. Para lo que tiene que ocurrir sí o sí está
     `bus.request`, que aparca la petición hasta que alguien se suscriba.
+
+    **Y hay una tercera categoría, que mordió el 2026-08-22.** Un aviso caduca;
+    un **estado**, no. `workspace.projectChanged` iba por `emit`, así que
+    GitHub —que no está en memoria hasta que lo abres— nunca se enteraba de la
+    carpeta ya abierta: el panel decía «PR sin proyecto activo» y solo se
+    arreglaba cambiando de carpeta **con GitHub delante**. Por eso el bus tiene
+    ahora `RETAINED`: el último valor se guarda y se entrega a cada nueva
+    suscripción, **sin consumirlo** —a diferencia de `parked`—, porque el shell
+    desmonta el módulo inactivo (trampa 18) y cada montaje lo necesita otra vez.
+    Encima había un segundo agujero: restaurar la pestaña al arrancar no emitía
+    nada. Funciona en todos los arranques porque Workspace es el primer módulo
+    del registro y siempre se monta; si algún día deja de serlo, esto vuelve.
 15. **`gh` abre una consola negra en cada llamada** si no se lanza con
     `CREATE_NO_WINDOW`. En una app de escritorio se ve parpadear.
 16. **Un proyecto por día, y lo impone la base.** `projects` tiene un índice
@@ -324,9 +336,18 @@ servicios de fondo, que se actualice solo cuando salga una versión nueva.
 Pesa más que lo que falta por hacer: hay mucho código nuevo que nadie ha visto
 funcionar contra datos reales.
 
-- **Todo el módulo GitHub.** Las escrituras —invitar, cambiar permiso, quitar
-  acceso, aprobar, pedir cambios, crear PR, fusionar, cerrar— **no se han
-  ejecutado nunca**. Son públicas e irreversibles.
+- **El módulo GitHub, a medias (2026-08-22).** Probado en la app contra
+  `oruka-pruebas`:
+  - **Verificado leyendo:** issues, lista de repos, lista de PR, diff y el panel
+    de comprobaciones con su verde y su rojo.
+  - **Verificado escribiendo:** comentar un PR (llega a GitHub y avisa), y el
+    rechazo de GitHub al pedir cambios sobre un PR propio (se explica en
+    castellano en vez de soltar el error crudo).
+  - **Sigue sin ejecutarse nunca:** invitar, cambiar permiso, quitar acceso,
+    crear PR, **fusionar** y **cerrar**. Fusionar es la que más importa: es la
+    que tiene que avisar de la comprobación en rojo.
+  - **No se puede probar sin una segunda cuenta:** aprobar y pedir cambios
+    —GitHub los bloquea sobre tu propio PR—, y las invitaciones recibidas.
 - Que las sesiones vuelvan al reabrir, con su modo, y que el agente retome la
   conversación.
 - La casilla «continuar la última conversación» al lanzar un agente.
