@@ -30,3 +30,7 @@
 }
 .statusbar__item--action:hover { background: var(--hover); color: var(--fg); }
 .statusbar__item--action .codicon { font-size: 13px; }
+
+/* La version, al final del todo. Discreta pero siempre visible: sin ella no
+   hay forma de saber que tienes instalado cuando algo no cuadra. */
+.statusbar__version { color: var(--fg-dim); font-variant-numeric: tabular-nums; }
