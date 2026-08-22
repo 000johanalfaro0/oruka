@@ -169,6 +169,93 @@ impl CliManifest {
     }
 }
 
+/// Las carpetas del PATH **de verdad**, no solo las heredadas.
+///
+/// En Windows un programa hereda una copia del PATH de quien lo lanzo, y el
+/// Explorador se queda con la suya desde que inicias sesion. Si instalas algo
+/// despues —`gh`, `uv`, un agente— queda en el PATH del sistema pero **no en el
+/// de la app**, que sigue con la foto vieja. El sintoma es desconcertante:
+/// winget dice "ya esta instalado" y Oruka insiste en que falta.
+///
+/// Por eso se consulta el registro, que es donde vive el PATH real. Se lee en
+/// cada llamada a proposito: cachearlo reintroduce el mismo problema en cuanto
+/// el usuario instala algo con la app abierta, que es justo el caso que se
+/// quiere cubrir.
+#[cfg(windows)]
+fn extra_path_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    for (raiz, clave) in [
+        ("HKLM", r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"),
+        ("HKCU", "Environment"),
+    ] {
+        let mut cmd = Command::new("reg");
+        cmd.args(["query", &format!("{raiz}\\{clave}"), "/v", "Path"]);
+        hide_console(&mut cmd);
+        let Ok(salida) = cmd.output() else { continue };
+        let texto = String::from_utf8_lossy(&salida.stdout);
+        // La linea es "    Path    REG_EXPAND_SZ    C:algo;C:otro"
+        let Some(linea) = texto.lines().find(|l| l.trim_start().starts_with("Path")) else {
+            continue;
+        };
+        let Some(valor) = linea.split_whitespace().nth(2).map(|_| {
+            let mut partes = linea.trim().splitn(3, char::is_whitespace);
+            partes.nth(2).unwrap_or("").trim().to_string()
+        }) else {
+            continue;
+        };
+        for tramo in valor.split(';') {
+            let tramo = tramo.trim();
+            if tramo.is_empty() {
+                continue;
+            }
+            // Los valores REG_EXPAND_SZ traen %VARIABLES% sin expandir.
+            let expandido = expandir(tramo);
+            let ruta = PathBuf::from(&expandido);
+            if ruta.is_dir() && !dirs.contains(&ruta) {
+                dirs.push(ruta);
+            }
+        }
+    }
+    dirs
+}
+
+/// Sustituye `%VAR%` por su valor. Lo que no exista se deja tal cual.
+#[cfg(windows)]
+fn expandir(texto: &str) -> String {
+    let mut out = String::with_capacity(texto.len());
+    let mut resto = texto;
+    while let Some(i) = resto.find('%') {
+        out.push_str(&resto[..i]);
+        let tras = &resto[i + 1..];
+        match tras.find('%') {
+            Some(j) => {
+                let nombre = &tras[..j];
+                match std::env::var(nombre) {
+                    Ok(v) => out.push_str(&v),
+                    Err(_) => {
+                        out.push('%');
+                        out.push_str(nombre);
+                        out.push('%');
+                    }
+                }
+                resto = &tras[j + 1..];
+            }
+            None => {
+                out.push('%');
+                resto = tras;
+                break;
+            }
+        }
+    }
+    out.push_str(resto);
+    out
+}
+
+#[cfg(not(windows))]
+fn extra_path_dirs() -> Vec<PathBuf> {
+    Vec::new()
+}
+
 /// Busca un ejecutable en el PATH.
 ///
 /// En Windows los CLIs instalados por npm son shims `.cmd`/`.ps1`, no `.exe`.
@@ -181,7 +268,10 @@ pub fn resolve_bin(bin: &str) -> Option<PathBuf> {
         vec!["".into()]
     };
 
-    for dir in std::env::split_paths(&path) {
+    // Primero lo heredado, que es lo barato; y si no aparece, el PATH real del
+    // sistema, que puede tener cosas instaladas despues de arrancar la app.
+    let heredadas: Vec<PathBuf> = std::env::split_paths(&path).collect();
+    for dir in heredadas.into_iter().chain(extra_path_dirs()) {
         for ext in &exts {
             let candidate = dir.join(format!("{bin}{ext}"));
             if candidate.is_file() {
@@ -349,5 +439,36 @@ mod tests {
             assert!(cli.path.is_some());
         }
         assert!(!found.is_empty(), "no se detecto ningun CLI en este sistema");
+    }
+}
+
+#[cfg(test)]
+mod tests_path {
+    use super::*;
+
+    #[test]
+    fn el_path_del_registro_trae_carpetas_de_verdad() {
+        // En Windows tiene que devolver algo y todo tiene que existir: una
+        // carpeta inventada haria que resolve_bin buscara donde no hay nada.
+        let dirs = extra_path_dirs();
+        if cfg!(windows) {
+            assert!(!dirs.is_empty(), "el registro deberia dar alguna carpeta");
+        }
+        for d in &dirs {
+            assert!(d.is_dir(), "{} no existe", d.display());
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn las_variables_se_expanden_y_lo_desconocido_se_respeta() {
+        // Los valores del registro traen %VARIABLES% sin resolver.
+        std::env::set_var("ORUKA_PRUEBA_X", "valor");
+        assert_eq!(expandir("a%ORUKA_PRUEBA_X%b"), "avalorb");
+        // Lo que no existe se deja tal cual en vez de desaparecer: una ruta a
+        // medias es peor que una ruta que no resuelve.
+        assert_eq!(expandir("%NO_EXISTE_JAMAS%"), "%NO_EXISTE_JAMAS%");
+        assert_eq!(expandir("sin variables"), "sin variables");
+        assert_eq!(expandir("a%suelto"), "a%suelto");
     }
 }
