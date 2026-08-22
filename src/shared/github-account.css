@@ -99,3 +99,21 @@
   line-height: 1.6;
 }
 .gha__nota code { font-family: var(--font-mono); }
+
+/* Contestarle a gh cuando pregunta. Sin esto, la pantalla se cuelga esperando
+   una respuesta que el usuario no tiene forma de dar. */
+.gha__responder { display: flex; gap: 8px; align-items: center; }
+
+.gha__input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--fg);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.gha__input:focus { outline: none; border-color: var(--accent); }
+.gha__responder .gha__secundario { margin-left: 0; }

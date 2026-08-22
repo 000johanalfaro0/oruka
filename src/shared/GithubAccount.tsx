@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { githubInstall, githubLogin, githubStatus, type GithubStatus } from '@/lib/github'
-import { onAgentExit, onAgentOutput } from '@/lib/agents'
+import { agentKill, agentWrite, onAgentExit, onAgentOutput } from '@/lib/agents'
 import './github-account.css'
 
 /**
@@ -19,6 +19,8 @@ export function GithubAccount() {
   const [gh, setGh] = useState<GithubStatus | null>(null)
   const [log, setLog] = useState('')
   const [busy, setBusy] = useState<null | 'instalando' | 'conectando'>(null)
+  /** Lo que el usuario le contesta a gh cuando pregunta algo. */
+  const [respuesta, setRespuesta] = useState('')
 
   const refrescar = useCallback(async () => {
     try {
@@ -73,6 +75,25 @@ export function GithubAccount() {
     }
   }
 
+  /**
+   * Manda lo que el usuario escriba a gh, con su Intro.
+   *
+   * `gh auth login` pregunta cosas: si ya hay sesion quiere confirmar que
+   * quieres reautenticarte, y a veces pide pulsar Intro para abrir el
+   * navegador. Ensenar su salida sin poder contestarle deja la pantalla colgada
+   * en «esperando» para siempre, que es exactamente lo que pasaba.
+   */
+  const responder = () => {
+    void agentWrite('gh-login', respuesta + '\r').catch((e) => setLog(String(e).slice(-200)))
+    setRespuesta('')
+  }
+
+  /** Corta el intento. Sin esto, un gh atascado no se puede soltar. */
+  const cancelar = () => {
+    void agentKill('gh-login').catch(() => {})
+    setBusy(null)
+  }
+
   if (!gh) return <p className="gha__pending">Comprobando…</p>
 
   return (
@@ -117,6 +138,29 @@ export function GithubAccount() {
 
       {log && <pre className="gha__log">{log}</pre>}
 
+      {/* gh es interactivo: si pregunta algo y no hay donde contestar, esto se
+          queda esperando para siempre. */}
+      {busy === 'conectando' && (
+        <div className="gha__responder">
+          <input
+            className="gha__input"
+            value={respuesta}
+            placeholder="Si gh pregunta algo, contesta aquí (y, n, Intro…)"
+            aria-label="Responder a gh"
+            onChange={(e) => setRespuesta(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') responder()
+            }}
+          />
+          <button className="gha__secundario" onClick={responder}>
+            Enviar
+          </button>
+          <button className="gha__secundario" onClick={cancelar}>
+            Cancelar
+          </button>
+        </div>
+      )}
+
       <p className="gha__nota">
         Oruka nunca ve tu token: trabaja con <code>gh</code> y reutiliza su sesión. Por eso la
         sesión es de <strong>este equipo</strong> — entrar en Oruka no conecta GitHub.
@@ -128,5 +172,5 @@ export function GithubAccount() {
 /** Quita las secuencias de escape: aqui no hay terminal que las interprete. */
 function limpiar(texto: string): string {
   // eslint-disable-next-line no-control-regex
-  return texto.replace(/\[[0-9;?]*[A-Za-z]/g, '')
+  return texto.replace(/\u001b\[[0-9;?]*[A-Za-z]/g, '')
 }

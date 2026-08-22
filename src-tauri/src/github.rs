@@ -207,7 +207,21 @@ pub fn install() -> Result<String, String> {
 /// que una persona apruebe el acceso. Lo unico que puede hacer la app es que no
 /// haya que escribir nada.
 pub fn login_args() -> Vec<String> {
-    ["auth", "login", "--web", "--clipboard", "--git-protocol", "https", "--skip-ssh-key"]
+    // Cada flag contesta por adelantado una pregunta que gh haria si no.
+    // Lo que NO se puede evitar es la de "ya tienes sesion, quieres volver a
+    // autenticarte": no hay flag para eso, asi que la interfaz tiene que dejar
+    // contestarla.
+    [
+        "auth",
+        "login",
+        "--hostname",
+        "github.com",
+        "--web",
+        "--clipboard",
+        "--git-protocol",
+        "https",
+        "--skip-ssh-key",
+    ]
         .iter()
         .map(|s| s.to_string())
         .collect()
