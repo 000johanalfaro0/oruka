@@ -3,6 +3,7 @@ import { githubOpenUrl, githubRepos, type Repo } from '@/lib/github'
 import { AccessPanel } from './AccessPanel'
 import { cached, invalidate, TTL_LARGO } from './cache'
 import { relativeTime } from './relativeTime'
+import { explicar } from './errores'
 
 /**
  * Los repositorios del usuario, propios o compartidos.
@@ -38,7 +39,7 @@ export function RepoList({ onCopy }: Props) {
         if (!cancelled) setRepos(list)
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(String(e))
+        if (!cancelled) setError(explicar(e))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)

@@ -13,6 +13,7 @@ import {
 } from '@/lib/github'
 import { cached, invalidate, TTL_CORTO } from './cache'
 import { relativeTime } from './relativeTime'
+import { explicar } from './errores'
 
 /**
  * Quien tiene acceso a un repo, y como cambiarlo.
@@ -52,7 +53,7 @@ export function AccessPanel({ repo, canManage }: Props) {
   const cargar = useCallback(() => {
     cached(`colabs:${repo}`, TTL_CORTO, () => githubCollaborators(repo))
       .then(setPeople)
-      .catch((e: unknown) => setError(String(e)))
+      .catch((e: unknown) => setError(explicar(e)))
     // Las invitaciones pendientes solo las ve quien administra el repo. Si no
     // puede, no se piden: devolveria un 403 y ensuciaria la pantalla con un
     // error que no le importa a nadie.
@@ -85,7 +86,7 @@ export function AccessPanel({ repo, canManage }: Props) {
         invalidate(`enviadas:${repo}`)
         cargar()
       })
-      .catch((e: unknown) => setError(String(e)))
+      .catch((e: unknown) => setError(explicar(e)))
       .finally(() => setBusy(false))
   }
 

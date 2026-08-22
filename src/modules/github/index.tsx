@@ -12,6 +12,7 @@ import { cached, invalidate, TTL_CORTO, TTL_LARGO } from './cache'
 import { Issues } from './Issues'
 import { PrPanel } from './PrPanel'
 import { RepoList } from './RepoList'
+import { explicar } from './errores'
 import './github.css'
 
 /**
@@ -84,7 +85,7 @@ export default function GithubModule() {
       </section>
 
       <aside className="gh__prs">
-        <PrPanel projectPath={project} onCopy={copiar} />
+        <PrPanel projectPath={project} onCopy={copiar} onAviso={setAviso} />
       </aside>
 
       {aviso && (
@@ -123,7 +124,7 @@ function Invitations() {
         invalidate('invitations')
         setItems((list) => list.filter((i) => i.id !== inv.id))
       })
-      .catch((e: unknown) => setError(String(e)))
+      .catch((e: unknown) => setError(explicar(e)))
       .finally(() => setBusy(null))
   }
 

@@ -14,6 +14,7 @@ import { bus } from '@/shell/bus'
 import { cached, invalidate, TTL_CORTO, TTL_LARGO } from './cache'
 import { PrReview } from './PrReview'
 import { relativeTime } from './relativeTime'
+import { explicar } from './errores'
 
 /**
  * Los PR del proyecto activo del Workspace.
@@ -33,9 +34,11 @@ const FILTROS: Array<{ id: PrFilter; label: string }> = [
 interface Props {
   projectPath: string | null
   onCopy: (text: string, label: string) => void
+  /** Para decir en voz alta que una accion publica salio bien. */
+  onAviso: (texto: string) => void
 }
 
-export function PrPanel({ projectPath, onCopy }: Props) {
+export function PrPanel({ projectPath, onCopy, onAviso }: Props) {
   const [repo, setRepo] = useState<string | null>(null)
   const [resolving, setResolving] = useState(false)
   const [filter, setFilter] = useState<PrFilter>('all')
@@ -104,7 +107,7 @@ export function PrPanel({ projectPath, onCopy }: Props) {
         if (!cancelled) setPrs(list)
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(String(e))
+        if (!cancelled) setError(explicar(e))
       })
     return () => {
       cancelled = true
@@ -124,7 +127,13 @@ export function PrPanel({ projectPath, onCopy }: Props) {
 
   if (revisando && repo) {
     return (
-      <PrReview repo={repo} pr={revisando} onBack={() => setRevisando(null)} onChanged={refrescar} />
+      <PrReview
+        repo={repo}
+        pr={revisando}
+        onBack={() => setRevisando(null)}
+        onChanged={refrescar}
+        onAviso={onAviso}
+      />
     )
   }
 
@@ -276,7 +285,7 @@ function CrearPr({
         if (url) void githubOpenUrl(url)
         onCreado()
       })
-      .catch((e: unknown) => setError(String(e)))
+      .catch((e: unknown) => setError(explicar(e)))
       .finally(() => setBusy(false))
   }
 

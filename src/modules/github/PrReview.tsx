@@ -11,6 +11,7 @@ import {
   type ReviewAction,
 } from '@/lib/github'
 import { cached, invalidate, TTL_CORTO } from './cache'
+import { explicar } from './errores'
 
 /**
  * Revisar un pull request sin salir de la app.
@@ -27,6 +28,14 @@ interface Props {
   onBack: () => void
   /** Para refrescar la lista cuando el PR deja de estar abierto. */
   onChanged: () => void
+  /**
+   * Para confirmar que la accion salio bien.
+   *
+   * Sin esto, publicar una revision no dejaba ni una senal: la caja de texto se
+   * vaciaba y ya. Quien no ve respuesta vuelve a pulsar, y aqui cada pulsacion
+   * es un comentario publico mas en el PR de alguien.
+   */
+  onAviso: (texto: string) => void
 }
 
 /** Lo que esta a punto de publicarse, en espera de confirmacion. */
@@ -35,13 +44,30 @@ type Pending =
   | { kind: 'merge'; method: 'merge' | 'squash' | 'rebase' }
   | { kind: 'close' }
 
+/**
+ * Que decirle al usuario cuando la accion ya esta hecha.
+ *
+ * En pasado y nombrando el PR: «se ha enviado» no distingue entre lo que se
+ * envio y lo que se quiso enviar, y aqui la diferencia es una publicacion con
+ * tu nombre en el repositorio de alguien.
+ */
+function hecho(accion: Pending, numero: number): string {
+  if (accion.kind === 'merge') return `El #${numero} se fusionó.`
+  if (accion.kind === 'close') return `El #${numero} se cerró sin fusionar.`
+  return {
+    approve: `Aprobaste el #${numero}.`,
+    'request-changes': `Pediste cambios en el #${numero}.`,
+    comment: `Comentaste en el #${numero}.`,
+  }[accion.action]
+}
+
 const REVISIONES: Array<{ id: ReviewAction; label: string; exigeTexto: boolean }> = [
   { id: 'approve', label: 'Aprobar', exigeTexto: false },
   { id: 'request-changes', label: 'Pedir cambios', exigeTexto: true },
   { id: 'comment', label: 'Comentar', exigeTexto: true },
 ]
 
-export function PrReview({ repo, pr, onBack, onChanged }: Props) {
+export function PrReview({ repo, pr, onBack, onChanged, onAviso }: Props) {
   const [checks, setChecks] = useState<Check[] | null>(null)
   const [diff, setDiff] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -57,7 +83,7 @@ export function PrReview({ repo, pr, onBack, onChanged }: Props) {
       .catch(() => setChecks([]))
     cached(`diff:${repo}:${pr.number}`, TTL_CORTO, () => githubPrDiff(repo, pr.number))
       .then(setDiff)
-      .catch((e: unknown) => setError(String(e)))
+      .catch((e: unknown) => setError(explicar(e)))
   }, [repo, pr.number])
 
   useEffect(cargar, [cargar])
@@ -78,11 +104,12 @@ export function PrReview({ repo, pr, onBack, onChanged }: Props) {
         setBody('')
         invalidate(`prs:${repo}`)
         invalidate(`checks:${repo}:${pr.number}`)
+        onAviso(hecho(accion, pr.number))
         // Fusionar o cerrar saca el PR de la lista: se vuelve a ella.
         if (accion.kind === 'review') cargar()
         else onChanged()
       })
-      .catch((e: unknown) => setError(String(e)))
+      .catch((e: unknown) => setError(explicar(e)))
       .finally(() => setBusy(false))
   }
 

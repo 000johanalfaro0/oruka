@@ -3,6 +3,7 @@ import { githubIssues, githubOpenUrl, type Issue } from '@/lib/github'
 import { bus } from '@/shell/bus'
 import { cached, TTL_CORTO } from './cache'
 import { relativeTime } from './relativeTime'
+import { explicar } from './errores'
 
 /**
  * Lo que te han asignado.
@@ -31,7 +32,7 @@ export function Issues({ projectPath, repoActivo }: Props) {
   useEffect(() => {
     cached('issues', TTL_CORTO, githubIssues)
       .then(setItems)
-      .catch((e: unknown) => setError(String(e)))
+      .catch((e: unknown) => setError(explicar(e)))
   }, [])
 
   if (error) return <p className="gh__error">{error}</p>
