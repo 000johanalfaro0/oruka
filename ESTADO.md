@@ -28,19 +28,23 @@ arrancar Vite**. Si lo creas o editas con la app corriendo, hay que reiniciarla.
 
 | Módulo | Estado |
 |---|---|
-| Shell | Completo: barra de módulos, pestañas, barra de estado, carga diferida |
-| Quick Setup | Completo: CLIs, GitHub, MCP, y relanzable desde Ajustes |
+| Shell | Completo: barra de módulos, pestañas, barra de estado, carga diferida, versión y aviso de actualización |
+| Quick Setup | Completo: instala los CLIs que falten, instala y conecta GitHub, MCP, roles, y relanzable desde Ajustes |
 | Login | Completo: email y contraseña, sesión de 7 días, entra sin red si ya la tenía |
 | Workspace | Funcional: 4 agentes con PTY real, repintado al volver, sesiones que sobreviven al cierre, gasto por agente |
 | MCP | Completo: catálogo, matriz MCP × CLI, diff previo, copia y revertir |
 | Ideas | Funcional: proyectos, detalle con 2 pestañas, horario, 3 tareas de IA |
 | GitHub | Completo: repos, acceso, invitaciones, PR con diff/checks/revisión/fusión, issues y aviso de revisiones |
-| Ajustes | Parcial: CLIs y MCP reales; carpetas, GitHub y apariencia pendientes |
+| Ajustes | Parcial: CLIs, MCP y **GitHub** reales; carpetas y apariencia pendientes |
 
 Medidas reales del build de release: instalador NSIS **2,00 MB**, binario 3,2 MB,
 27 MB de RSS el proceso principal. Arranque JS 60 kB gzip.
 
-61 tests en Rust, 1 ignorado a propósito.
+83 tests en Rust, 1 ignorado a propósito.
+
+**La app se actualiza sola desde la 0.1.2.** Publicar es `npm run publicar -- <version>
+"<notas>"`: firma, arma el manifiesto y sube la release en un paso. Hacerlo a mano
+son seis, y si falta el `latest.json` la comprobación falla **en silencio**.
 
 ---
 
@@ -292,6 +296,9 @@ funcionar contra datos reales.
 - Que las sesiones vuelvan al reabrir, con su modo, y que el agente retome la
   conversación.
 - La casilla «continuar la última conversación» al lanzar un agente.
+- **Verificado en la app (2026-08-21):** el aviso de versión nueva sale abajo a la
+  derecha y se maneja desde ahí. Queda por confirmar que descargar y reiniciar
+  aplican la versión.
 - Las barras de gasto, ahora **en la barra de estado y por CLI**, no por agente:
   que aparezcan al abrir un agente, que dos ventanas del mismo CLI sigan
   enseñando una sola barra, y que la fila de abajo no crezca ni dé saltos.
