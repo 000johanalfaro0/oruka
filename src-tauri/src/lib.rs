@@ -6,6 +6,7 @@
 
 mod github;
 mod mcp;
+mod node;
 mod ports;
 mod projects;
 mod pty;
@@ -39,6 +40,8 @@ pub fn run() {
             store_seed,
             detect_clis,
             install_cli,
+            node_status,
+            node_install,
             github_status,
             github_install,
             github_login,
@@ -485,6 +488,18 @@ async fn mcp_install_requirement(server_id: String) -> Result<String, String> {
 #[tauri::command]
 async fn install_cli(cli_id: String) -> Result<String, String> {
     registry::install(&cli_id)
+}
+
+/// Estado de Node.js / npm en este equipo.
+#[tauri::command]
+async fn node_status() -> Result<node::NodeStatus, String> {
+    Ok(node::status())
+}
+
+/// Instala Node.js LTS mediante el gestor del sistema (winget/brew).
+#[tauri::command]
+async fn node_install() -> Result<String, String> {
+    node::install()
 }
 
 /// Que archivos de rol cambiarian en este proyecto, sin escribir nada.

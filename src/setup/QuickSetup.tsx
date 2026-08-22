@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { detectClis, installCli, type DetectedCli } from '@/lib/agents'
+import { nodeInstall, nodeStatus, type NodeStatus } from '@/lib/node'
 import { GithubAccount } from '@/shared/GithubAccount'
 import { McpMatrix } from '@/shared/McpMatrix'
 import { RolesPanel } from '@/shared/RolesPanel'
@@ -23,11 +24,29 @@ const STEPS = ['CLIs', 'GitHub', 'MCP', 'Roles', 'Listo'] as const
 export function QuickSetup({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0)
   const [clis, setClis] = useState<DetectedCli[] | null>(null)
+  const [node, setNode] = useState<NodeStatus | null>(null)
+  const [instalandoNode, setInstalandoNode] = useState(false)
   /** Que CLI se esta instalando ahora, si hay alguno. */
   const [instalando, setInstalando] = useState<string | null>(null)
   /** El comando que se va a ejecutar, esperando confirmacion. */
   const [confirmar, setConfirmar] = useState<DetectedCli | null>(null)
   const [salida, setSalida] = useState<{ id: string; texto: string; mal: boolean } | null>(null)
+
+  const instalarNode = async () => {
+    setInstalandoNode(true)
+    setSalida(null)
+    try {
+      const texto = await nodeInstall()
+      setSalida({ id: 'node', texto: texto.trim().slice(-400) || 'Node.js instalado correctamente.', mal: false })
+      setNode(await nodeStatus())
+      setClis(await detectClis())
+    } catch (e) {
+      setSalida({ id: 'node', texto: String(e).slice(-400), mal: true })
+    } finally {
+      setInstalandoNode(false)
+    }
+  }
+
   /**
    * Instala o actualiza un CLI y vuelve a mirar el PATH.
    *
@@ -53,6 +72,7 @@ export function QuickSetup({ onDone }: { onDone: () => void }) {
     // El estado de GitHub ya lo pide su propio componente: pedirlo aqui
     // tambien lanzaba un proceso `gh` de mas en cada arranque del asistente.
     void detectClis().then(setClis)
+    void nodeStatus().then(setNode)
   }, [])
 
   const finish = () => {
@@ -88,8 +108,47 @@ export function QuickSetup({ onDone }: { onDone: () => void }) {
                 Oruka funciona con los que tengas. Si te falta alguno, puedes instalarlo desde
                 aquí; verás el comando exacto antes de que se ejecute.
               </p>
+
               {!clis && <p className="setup__pending">Buscando en el PATH…</p>}
               <ul className="setup__clis">
+                {/* Node.js como herramienta base en la misma lista */}
+                <li className={`setup__cli${node?.installed ? ' is-found' : ''}`}>
+                  <i
+                    className={`codicon codicon-${node?.installed ? 'pass-filled' : 'circle-large-outline'}`}
+                    aria-hidden="true"
+                  />
+                  <span className="setup__cli-name">Node.js (npm)</span>
+                  <span className="setup__cli-version">{node?.version ?? 'no encontrado'}</span>
+                  {!node?.installed && (
+                    <button
+                      className="setup__install"
+                      disabled={instalando !== null || instalandoNode}
+                      onClick={() =>
+                        setConfirmar({
+                          id: 'node',
+                          name: 'Node.js (npm)',
+                          icon: 'package',
+                          found: false,
+                          path: null,
+                          version: null,
+                          modes: [],
+                          can_resume: false,
+                          role: null,
+                          usage: null,
+                          install: {
+                            command: navigator.userAgent.includes('Mac') ? 'brew' : 'winget',
+                            args: navigator.userAgent.includes('Mac')
+                              ? ['install', 'node']
+                              : ['install', '--id', 'OpenJS.NodeJS.LTS', '-e', '--accept-source-agreements', '--accept-package-agreements'],
+                          },
+                        })
+                      }
+                    >
+                      {instalandoNode ? 'Instalando…' : 'Instalar'}
+                    </button>
+                  )}
+                </li>
+
                 {clis?.map((c) => (
                   <li key={c.id} className={`setup__cli${c.found ? ' is-found' : ''}`}>
                     <i
@@ -98,12 +157,15 @@ export function QuickSetup({ onDone }: { onDone: () => void }) {
                     />
                     <span className="setup__cli-name">{c.name}</span>
                     <span className="setup__cli-version">{c.version ?? 'no encontrado'}</span>
-                    {/* Sin comando declarado no hay boton. agy es un binario
-                        nativo con instalador propio: ofrecerlo seria mentir. */}
                     {c.install && (
                       <button
                         className="setup__install"
-                        disabled={instalando !== null}
+                        disabled={instalando !== null || (!node?.installed && c.install.command === 'npm')}
+                        title={
+                          !node?.installed && c.install.command === 'npm'
+                            ? 'Requiere instalar Node.js primero'
+                            : undefined
+                        }
                         onClick={() => setConfirmar(c)}
                       >
                         {instalando === c.id ? 'Instalando…' : c.found ? 'Actualizar' : 'Instalar'}
@@ -125,7 +187,17 @@ export function QuickSetup({ onDone }: { onDone: () => void }) {
                     <button className="setup__cancel" onClick={() => setConfirmar(null)}>
                       Cancelar
                     </button>
-                    <button className="setup__go" onClick={() => void instalar(confirmar)}>
+                    <button
+                      className="setup__go"
+                      onClick={() => {
+                        if (confirmar.id === 'node') {
+                          setConfirmar(null)
+                          void instalarNode()
+                        } else {
+                          void instalar(confirmar)
+                        }
+                      }}
+                    >
                       Ejecutar
                     </button>
                   </div>

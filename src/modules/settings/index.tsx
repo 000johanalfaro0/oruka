@@ -105,7 +105,10 @@ function Panel({ title, hint, pending }: { title: string; hint: string; pending:
     <section>
       <h2 className="settings__title">{title}</h2>
       <p className="settings__hint">{hint}</p>
-      <p className="settings__pending">Pendiente ({pending})</p>
+      <div className="settings__pending">
+        <i className="codicon codicon-clock" aria-hidden="true" />
+        <span>Próximamente · Pendiente ({pending})</span>
+      </div>
     </section>
   )
 }

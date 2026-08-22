@@ -88,7 +88,7 @@ pub struct TokenScan {
 }
 
 /// Cuantos caracteres de cola se guardan: la marca mas la cifra mas larga.
-const COLA: usize = 64;
+const COLA: usize = 128;
 
 impl TokenScan {
     fn new(marca: Option<String>, antes: bool) -> Self {
@@ -105,10 +105,11 @@ impl TokenScan {
             return None;
         }
         let unido = format!("{}{}", self.cola, texto);
+        let limpio = sin_escapes(&unido);
         let encontrado = if self.antes {
-            ultimo_valor_antes(&unido, &self.marca)
+            ultimo_valor_antes(&limpio, &self.marca)
         } else {
-            ultimo_valor(&unido, &self.marca)
+            ultimo_valor(&limpio, &self.marca)
         };
 
         // La cola se guarda siempre, haya habido suerte o no. Se corta por una
@@ -131,6 +132,50 @@ impl TokenScan {
     }
 }
 
+/// Quita las secuencias de escape enteras (CSI y OSC), hasta la letra que las cierra.
+///
+/// Las secuencias ANSI llevan digitos dentro (ESC[2m, ESC[38;5;244m, ESC[79C, ESC[0m)
+/// que colaban cifras falsas (trampa 21) o partian la marca de gasto si habia un
+/// cambio de estilo en medio.
+pub fn sin_escapes(texto: &str) -> String {
+    let bytes = texto.as_bytes();
+    let mut out = String::with_capacity(texto.len());
+    let mut i = 0;
+    let mut texto_inicio = 0;
+    while i < bytes.len() {
+        if bytes[i] == 0x1b {
+            if i > texto_inicio {
+                out.push_str(&texto[texto_inicio..i]);
+            }
+            i += 1;
+            if i < bytes.len() && (bytes[i] == b'[' || bytes[i] == b']') {
+                let cierra_osc = bytes[i] == b']';
+                i += 1;
+                while i < bytes.len() {
+                    let b = bytes[i];
+                    if cierra_osc && (b == 0x07 || b == 0x1b) {
+                        break;
+                    }
+                    if !cierra_osc && (0x40..=0x7e).contains(&b) {
+                        break;
+                    }
+                    i += 1;
+                }
+            }
+            if i < bytes.len() {
+                i += 1;
+            }
+            texto_inicio = i;
+        } else {
+            i += 1;
+        }
+    }
+    if texto_inicio < bytes.len() {
+        out.push_str(&texto[texto_inicio..]);
+    }
+    out
+}
+
 /// El ultimo numero que sigue a la marca dentro del texto.
 ///
 /// Se queda con la ultima aparicion porque el contador va subiendo y lo que
@@ -151,7 +196,7 @@ fn ultimo_valor(texto: &str, marca: &str) -> Option<u64> {
 /// El ultimo numero que PRECEDE a la marca dentro del texto.
 ///
 /// Se mira hacia atras desde la marca, saltando lo que haya en medio (un signo
-/// de porcentaje, espacios, secuencias de escape) hasta dar con los digitos.
+/// de porcentaje, espacios) hasta dar con los digitos.
 fn ultimo_valor_antes(texto: &str, marca: &str) -> Option<u64> {
     let mut mejor = None;
     let mut desde = 0;
@@ -194,17 +239,13 @@ fn numero_hacia_atras(texto: &str) -> Option<u64> {
 /// El primer numero de un texto, saltando lo que haya en medio.
 ///
 /// Acepta `33245`, `33,245`, `33.245` y `12k`. Se salta espacios, saltos de
-/// linea y secuencias de escape, porque entre la marca y la cifra un TUI mete
-/// de todo para colocar el cursor.
+/// linea y secuencias de escape.
 fn primer_numero(texto: &str) -> Option<u64> {
     let bytes = texto.as_bytes();
     let mut i = 0;
     // No se busca indefinidamente: si la cifra no viene cerca, no es la nuestra.
     let tope = bytes.len().min(48);
     while i < tope {
-        // Las secuencias de escape LLEVAN DIGITOS DENTRO: `ESC[2m` tiene un 2 y
-        // se colaba como si fuera el contador. Hay que saltarlas enteras, hasta
-        // la letra que las cierra.
         if bytes[i] == 0x1b {
             i += 1;
             if i < bytes.len() && bytes[i] == b'[' {
@@ -614,6 +655,25 @@ mod tests {
             ultimo_valor_antes("tab to queue message42% context left", "% context left"),
             Some(42)
         );
+    }
+
+    #[test]
+    fn lee_la_cifra_con_secuencias_de_escape_en_el_medio() {
+        // En una terminal real, codex mete secuencias de escape entre la cifra y la marca o alrededor.
+        // Trampa 21: ESC[2m, ESC[0m, ESC[22m o ESC[79C colaban sus propios digitos o partian la marca.
+        let salida_real = "  \x1b[2mtab to queue message\x1b[22m\x1b[79X\x1b[2m\x1b[79C100% context left\x1b[22m  ";
+        let mut scan = TokenScan::new(Some("% context left".into()), true);
+        assert_eq!(scan.push(salida_real), Some(100));
+
+        // Color/reset entre el numero y el porcentaje:
+        let con_reset = "\x1b[38;5;244m100\x1b[0m% context left";
+        let mut scan2 = TokenScan::new(Some("% context left".into()), true);
+        assert_eq!(scan2.push(con_reset), Some(100));
+
+        // Color/reset entre el porcentaje y el texto de la marca:
+        let con_reset_marca = "\x1b[2m100%\x1b[22m context left";
+        let mut scan3 = TokenScan::new(Some("% context left".into()), true);
+        assert_eq!(scan3.push(con_reset_marca), Some(100));
     }
 
     #[test]

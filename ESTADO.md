@@ -40,7 +40,7 @@ arrancar Vite**. Si lo creas o editas con la app corriendo, hay que reiniciarla.
 Medidas reales del build de release: instalador NSIS **2,00 MB**, binario 3,2 MB,
 27 MB de RSS el proceso principal. Arranque JS 60 kB gzip.
 
-83 tests en Rust, 1 ignorado a propósito.
+88 tests en Rust, 1 ignorado a propósito.
 
 **Versión publicada: 0.1.11.** La app se actualiza sola desde la 0.1.2. Publicar es `npm run publicar -- <version>
 "<notas>"`: firma, arma el manifiesto y sube la release en un paso. Hacerlo a mano
@@ -203,8 +203,10 @@ comentarios: romperlos deja a alguien sin su herramienta.
     Se puso en `github.rs` y se olvidó en `registry.rs`, así que entrar en
     Ajustes abría una consola por cada CLI detectado.
 21. **Las secuencias de escape llevan dígitos dentro.** Al buscar el contador
-    de tokens, `ESC[2m` colaba un «2» como si fuera la cifra. Hay que saltar
-    los escapes enteros, hasta la letra que los cierra.
+    de tokens, `ESC[2m`, `ESC[0m` o `ESC[79C` colaban cifras falsas o partían
+    la marca si había un cambio de estilo en medio (lo que rompía codex).
+    `TokenScan` limpia las secuencias de escape enteras (`sin_escapes`) antes
+    de buscar la marca tanto hacia delante como hacia atrás.
 22. **La marca del contador puede venir partida entre dos lecturas del PTY.**
     Por eso `TokenScan` guarda una cola del trozo anterior.
 23. **Git Bash reescribe los argumentos que empiezan por `/`** y los convierte
@@ -355,8 +357,9 @@ funcionar contra datos reales.
   derecha y se maneja desde ahí. Queda por confirmar que descargar y reiniciar
   aplican la versión.
 - Las barras de gasto, ahora **en la barra de estado y por CLI**, no por agente:
-  que aparezcan al abrir un agente, que dos ventanas del mismo CLI sigan
-  enseñando una sola barra, y que la fila de abajo no crezca ni dé saltos.
+  - **Codex (arreglado y probado con tests):** `codex.json` tiene `marker: "% context left"` con `number: "before"`. El parser hacia atrás (`numero_hacia_atras`) fallaba al encontrarse secuencias de escape ANSI intercaladas (`ESC[2m`, `ESC[79C`, `ESC[0m`, `ESC[22m`), confundiendo los números del código de escape o partiendo la marca. Se corrigió limpiando escapes (`sin_escapes`) antes del escaneo.
+  - **Claude (comportamiento normal):** solo imprime `You've used N% of your weekly limit` cuando se acerca al límite semanal; antes no emite texto de cuota y la UI honestamente no muestra barra en vez de inventar un 0%.
+  - **Agy (verificado lanzando el CLI):** no publica cuota ni uso en la terminal; se deja sin bloque `usage` en `agy.json`.
 - Que ya no salga la consola negra al entrar en Ajustes, ni se congele.
 - El repintado de la terminal al volver a una pestaña.
 - El reparto de roles: que al abrir una carpeta aparezcan los `.md` con el
@@ -433,7 +436,7 @@ es una migración de Supabase y necesita permiso explícito.
 | **0router** | Investigado, sin empezar. Es un **servidor local** al que apuntan los CLIs, no un agente: no va en `packages/adapters/`. Su sitio es una sección propia que lo detecte, lo arranque y configure a los CLIs, reutilizando la escritura segura de MCP. Falta confirmar **CLI por CLI** cómo se le indica un servidor propio. No está instalado en el equipo. |
 | **Auto-actualización** | **Hecha y verificada.** Aviso en la barra de estado, con comprobación manual pulsando la versión. |
 | **Roles entre agentes** | **Hecho, y configurable desde Ajustes.** Cada CLI recibe su papel en el archivo que ya lee (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`), como un **bloque delimitado**: lo que está fuera de las marcas no se toca nunca. Viene **apagado**: esos archivos son del usuario. Se dispara al abrir una carpeta. **Sin verificar en la app.** |
-| **Marcas de gasto** | **Rehecho.** Se comprobó lanzando los cuatro de verdad (`cargo run --example token_check`). La marca que tenía codex (`tokens used`) **era vieja y ya no aparece**. Hoy: claude dice «You've used N% of your weekly limit» y codex «N% context left». **agy** no dijo nada en 70 s y **opencode** no arranca (sin modelo configurado): los dos siguen sin marca. |
+| **Marcas de gasto** | **Corregido y verificado.** Lanzado `token_check` para los CLIs: codex emite `N% context left` pero venía envuelto en escapes ANSI que rompían el escaneo hacia atrás (reparado con `sin_escapes` y test en Rust). claude solo avisa cuando se acerca al límite semanal (diseño honesto: sin dato no hay barra). agy no publica cuota (comprobado en 25 s, sin bloque `usage`). |
 | **Skills de ECC en agy** | Diagnosticado y **no es del proyecto**: codex tiene 209 skills en `~/.codex/skills` y su `ecc-install-state.json`; agy solo una en `~/.gemini/skills` y ningún estado de instalación. ECC nunca se instaló para agy. |
 | **Captura real con agentes** | La landing usa una recreación generada con codex, etiquetada como tal. Falta lanzar dos o tres agentes de verdad y capturar. |
 | **Repositorio público** | **Hecho.** `oruka` es público desde el 2026-08-21; historial revisado, sin secretos. **`folio` tambien quedo publico por error** y está pendiente de decidir si se cierra. |

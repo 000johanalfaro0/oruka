@@ -35,12 +35,24 @@
     "flag": "--prompt-interactive"
   },
   "mcp": {
-    "format": "unsupported",
-    "note": "agy no expone subcomando mcp ni config conocida. Pendiente de spike (M4). Hasta entonces la UI debe mostrar 'MCP no soportado', no fingir que funciona."
+    "format": "claude-json",
+    "path": "~/.gemini/config/mcp_config.json",
+    "key": "mcpServers"
   },
   "roles": {
     "file": "GEMINI.md",
     "role": "Explorador",
     "brief": "Rastrea el código y las dependencias para responder preguntas. No modifica archivos salvo que se le pida."
+  },
+  "install": {
+    "command": "winget",
+    "args": [
+      "install",
+      "--id",
+      "Google.AntigravityCLI",
+      "-e",
+      "--accept-source-agreements",
+      "--accept-package-agreements"
+    ]
   }
 }
