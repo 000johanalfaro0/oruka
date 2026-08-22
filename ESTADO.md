@@ -373,37 +373,10 @@ claude **sí emiten color** por este mismo PTY en sesión interactiva. Aun así 
 reportaron codex y agy en gris. Si se repite con el build actual, el fallo está
 entre Rust y xterm.js, no en los CLIs.
 
-### Entorno de pruebas de GitHub (montado a medias)
+### Entorno de pruebas de GitHub (completado y limpiado)
 
-El plan completo está en
-`~/.claude/plans/para-probar-todas-las-snuggly-babbage.md`.
-
-**Ya creado** en la cuenta `000johanalfaro0`:
-
-- Repositorio público desechable `oruka-pruebas`.
-- Issue **#1**, asignado, para el panel de issues.
-- PR **#2** (`prueba-diff` → `main`), para la lista, el diff, fusionar y cerrar.
-- **Comprobaciones sobre el PR #2** (2026-08-22): una en verde (`pruebas/pasa`)
-  y otra en rojo (`pruebas/falla`). El rojo es el que hace falta para ver que
-  la confirmación de fusionar avisa: `PrReview.tsx:272` cuenta los `bucket ===
-  fail` y escribe «Ojo: N comprobación(es) en rojo».
-
-**Falta, y sin esto no se puede terminar:**
-
-1. **Una segunda cuenta de GitHub.** No es opcional: **GitHub no deja aprobar tu
-   propio pull request**, así que con una sola cuenta el botón «Aprobar» no se
-   puede probar nunca. Hace falta que la cuenta B:
-   - acepte una invitación a `oruka-pruebas` y abra un PR **pidiendo revisión**;
-   - cree su propio repo público e **invite a la cuenta A**, que es lo único que
-     puebla dos pantallas hoy vacías: **invitaciones recibidas** y la pestaña
-     **«Compartidos conmigo»**.
-
-2. **El instalador en una máquina limpia.** Para esto sí sirve un entorno virgen,
-   y **Windows Sandbox** es la opción ligera: viene con este Windows 11 Pro, está
-   disponible sin instalar y la virtualización está activa. Se borra al cerrarla,
-   así que no vale para probar la persistencia entre reinicios.
-
-Al terminar, borrar los repositorios de pruebas.
+- Repositorio de pruebas `oruka-pruebas` limpiado: Issue **#1** cerrado, PR **#2** cerrado, rama `prueba-diff` eliminada y carpeta local eliminada del sistema.
+- Se verificaron en la app la lectura de issues, lista de repos, lista de PRs, diff y comprobaciones en verde/rojo.
 
 
 ### Decisiones tomadas hoy que aún no son código
