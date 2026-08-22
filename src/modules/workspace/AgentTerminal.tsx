@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { WebglAddon } from '@xterm/addon-webgl'
 import {
   agentResize,
   agentScrollback,
@@ -81,14 +82,39 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
       scrollback: 5000,
       allowProposedApi: true,
     })
+    const cleanups: Array<() => void> = []
     const fit = new FitAddon()
     term.loadAddon(fit)
     term.open(host)
+
+    /**
+     * Pintar por GPU en vez de por DOM.
+     *
+     * Sin esto, xterm dibuja cada caracter como elementos del documento, y con
+     * cuatro terminales escupiendo texto a la vez eso hunde una maquina
+     * modesta. El addon estaba instalado desde el principio pero **no se
+     * cargaba nunca**, asi que se estaba pagando el renderizador lento sin
+     * saberlo.
+     *
+     * Va con red: en equipos con graficos viejos o sin aceleracion, crear el
+     * contexto falla, y ahi hay que dejar que xterm siga con el suyo de
+     * siempre en vez de quedarse sin terminal. Y si el contexto se pierde
+     * mientras corre —pasa al suspender el portatil— se descarta el addon y
+     * xterm vuelve solo al camino lento.
+     */
+    try {
+      const webgl = new WebglAddon()
+      webgl.onContextLoss(() => webgl.dispose())
+      term.loadAddon(webgl)
+      cleanups.push(() => webgl.dispose())
+    } catch {
+      // Sin aceleracion. Se pinta mas lento, pero se pinta.
+    }
+
     fit.fit()
 
     let alive = true
     let ready = false
-    const cleanups: Array<() => void> = []
 
     /**
      * Bytes ya pintados. Hasta saberlo, lo que llega se encola en vez de
