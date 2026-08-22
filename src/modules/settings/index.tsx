@@ -3,14 +3,16 @@ import { CliSection } from './CliSection'
 import { relaunchSetup } from '@/setup/QuickSetup'
 import { McpMatrix } from '@/shared/McpMatrix'
 import { GithubAccount } from '@/shared/GithubAccount'
+import { RolesPanel } from '@/shared/RolesPanel'
 import './settings.css'
 
-type Section = 'workspace' | 'clis' | 'mcp' | 'github' | 'apariencia'
+type Section = 'workspace' | 'clis' | 'mcp' | 'roles' | 'github' | 'apariencia'
 
 const SECTIONS: { id: Section; label: string; icon: string }[] = [
   { id: 'workspace', label: 'Carpetas de trabajo', icon: 'root-folder' },
   { id: 'clis', label: 'CLIs de IA', icon: 'terminal' },
   { id: 'mcp', label: 'MCP', icon: 'plug' },
+  { id: 'roles', label: 'Roles', icon: 'organization' },
   { id: 'github', label: 'GitHub', icon: 'github' },
   { id: 'apariencia', label: 'Apariencia', icon: 'symbol-color' },
 ]
@@ -63,6 +65,17 @@ export default function SettingsModule() {
               tocar cada archivo, guarda una copia previa y deja revertir.
             </p>
             <McpMatrix />
+          </section>
+        )}
+        {section === 'roles' && (
+          <section>
+            <h2 className="settings__title">Roles de los agentes</h2>
+            <p className="settings__hint">
+              Si dos agentes trabajan sobre los mismos archivos, hoy son dos desconocidos que se
+              pisan. Oruka puede dejarle a cada uno un papel escrito en el archivo que ese CLI ya
+              lee, y decirle que los demás existen. Viene apagado: esos archivos son tuyos.
+            </p>
+            <RolesPanel />
           </section>
         )}
         {section === 'github' && (
