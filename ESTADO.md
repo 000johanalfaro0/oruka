@@ -31,18 +31,18 @@ arrancar Vite**. Si lo creas o editas con la app corriendo, hay que reiniciarla.
 | Shell | Completo: barra de módulos, pestañas, barra de estado, carga diferida, versión y aviso de actualización |
 | Quick Setup | Completo: instala los CLIs que falten, instala y conecta GitHub, MCP, roles, y relanzable desde Ajustes |
 | Login | Completo: email y contraseña, sesión de 7 días, entra sin red si ya la tenía |
-| Workspace | Funcional: 4 agentes con PTY real, repintado al volver, sesiones que sobreviven al cierre, gasto por agente |
+| Workspace | Funcional: 4 agentes con PTY real (pintado por GPU), repintado al volver, sesiones que sobreviven al cierre, estado real de cada agente, gasto por CLI en la barra de estado |
 | MCP | Completo: catálogo, matriz MCP × CLI, diff previo, copia y revertir |
-| Ideas | Funcional: proyectos, detalle con 2 pestañas, horario, 3 tareas de IA |
+| Ideas | Funcional: proyectos con renombrar y borrar, detalle con 2 pestañas, horario, 3 tareas de IA |
 | GitHub | Completo: repos, acceso, invitaciones, PR con diff/checks/revisión/fusión, issues y aviso de revisiones |
-| Ajustes | Parcial: CLIs, MCP y **GitHub** reales; carpetas y apariencia pendientes |
+| Ajustes | Parcial: CLIs, MCP, GitHub y Roles reales; **carpetas y apariencia pendientes** |
 
 Medidas reales del build de release: instalador NSIS **2,00 MB**, binario 3,2 MB,
 27 MB de RSS el proceso principal. Arranque JS 60 kB gzip.
 
 83 tests en Rust, 1 ignorado a propósito.
 
-**La app se actualiza sola desde la 0.1.2.** Publicar es `npm run publicar -- <version>
+**Versión publicada: 0.1.11.** La app se actualiza sola desde la 0.1.2. Publicar es `npm run publicar -- <version>
 "<notas>"`: firma, arma el manifiesto y sube la release en un paso. Hacerlo a mano
 son seis, y si falta el `latest.json` la comprobación falla **en silencio**.
 
@@ -242,6 +242,29 @@ comentarios: romperlos deja a alguien sin su herramienta.
     o con la firma de otro build, la comprobación falla en silencio y nadie se
     entera de que hay versión nueva. Se construye con
     `TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.oruka-updater.key)" npm run app:build`.
+33. **No se puede publicar con Oruka abierta.** El build tiene que reemplazar
+    `target/release/oruka.exe`, y Windows no deja borrar un ejecutable en
+    marcha: sale «Acceso denegado (os error 5)». Es la trampa 8 en versión
+    instalador. Cierra la Oruka **construida desde el proyecto** (la instalada
+    vive en otra carpeta y no estorba) antes de `npm run publicar`. Pendiente:
+    que el script lo detecte y lo diga con una frase clara, o que construya en
+    otro `CARGO_TARGET_DIR`.
+34. **En Windows el PATH que hereda la app puede estar caducado.** El
+    Explorador se queda con su copia desde que inicias sesión, así que lo que
+    instales después existe pero la app no lo ve: `winget` dice «ya está
+    instalado» y Oruka insiste en que falta. Por eso `resolve_bin` consulta el
+    registro cuando algo no aparece en el PATH heredado, y **no cachea** el
+    resultado: cachearlo reintroduce el fallo en cuanto instalas algo con la
+    app abierta.
+35. **`gh auth login` es interactivo y no hay flag que lo evite.** Si ya hay
+    sesión pregunta si quieres reautenticarte. Enseñar su salida sin poder
+    contestarle deja la pantalla colgada para siempre: por eso la pantalla de
+    GitHub tiene un campo para responder y un botón para cancelar.
+36. **El acelerador por GPU de la terminal hay que cargarlo a mano.** El addon
+    de WebGL estaba en las dependencias desde el principio y no se cargaba: se
+    pagaba el renderizador por DOM sin motivo, y en un equipo modesto eso hunde
+    la app. Va con red doble: si no hay aceleración, se deja el camino lento; y
+    si se pierde el contexto (al suspender el portátil) se descarta el addon.
 
 ---
 
@@ -355,17 +378,41 @@ El plan completo está en
 
 Al terminar, borrar los repositorios de pruebas.
 
+
+### Decisiones tomadas hoy que aún no son código
+
+**El registro de pushes** (pedido, diseñado, sin empezar). Cada vez que se
+suba algo, anotar fecha, rama, cuántos commits y **qué agentes estaban en
+marcha**. Va a un archivo aparte **sin versionar** (`.oruka/historial.md`), no
+al bloque de roles: escribir en un archivo versionado deja el árbol sucio justo
+después de subir, y esa línea entra en el commit siguiente, que provoca otro
+push. Se muerde la cola. El bloque de roles llevaría una línea diciéndole a los
+agentes que lean ese archivo. Detectarlo es viable: `github::branch_status` ya
+da los commits por delante del remoto, y pasar de N a 0 es un push.
+
+**Carpetas de trabajo en Ajustes está bloqueado por la regla 1**, no por
+pereza. Las carpetas viven en el almacén del Workspace y Ajustes no puede
+importar de otro módulo: hay lint que rompe el build. Tres salidas: sacarlas a
+un sitio común fuera de ambos (lo limpio, es refactor de la persistencia, que
+hoy guarda carpetas y pestañas juntas), hablar por el bus con `bus.request`
+(menos código, más indirección), o **quitar la sección**, ya que las carpetas
+se gestionan desde el Workspace, que es donde se usan. Dejar un cartel de
+«Pendiente» es la peor de las tres.
+
+**El tope de 5000 caracteres por idea no está en el código.** Es una
+restricción de la base de datos de producción, compartida con Idearia. Subirlo
+es una migración de Supabase y necesita permiso explícito.
 ### Pedido y sin empezar
 
 | Qué | Estado |
 |---|---|
 | **0router** | Investigado, sin empezar. Es un **servidor local** al que apuntan los CLIs, no un agente: no va en `packages/adapters/`. Su sitio es una sección propia que lo detecte, lo arranque y configure a los CLIs, reutilizando la escritura segura de MCP. Falta confirmar **CLI por CLI** cómo se le indica un servidor propio. No está instalado en el equipo. |
-| **Auto-actualización** | Sin empezar. Con la release publicada, encaja en GitHub Releases. Es lo que hace que otra persona reciba versiones nuevas sin enterarse. |
-| **Roles entre agentes** | **Escrito, sin probar en la app.** Cada CLI recibe su papel en el archivo que ya lee (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`), como un **bloque delimitado**: lo que está fuera de las marcas no se toca nunca. Viene **apagado**; se activa en el paso «Roles» del Quick Setup, que solo ofrece los CLIs instalados y deja cambiar el papel de cada uno. Se dispara al abrir una carpeta. Falta: llevarlo también a Ajustes |
+| **Auto-actualización** | **Hecha y verificada.** Aviso en la barra de estado, con comprobación manual pulsando la versión. |
+| **Roles entre agentes** | **Hecho, y configurable desde Ajustes.** Cada CLI recibe su papel en el archivo que ya lee (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`), como un **bloque delimitado**: lo que está fuera de las marcas no se toca nunca. Viene **apagado**: esos archivos son del usuario. Se dispara al abrir una carpeta. **Sin verificar en la app.** |
 | **Marcas de gasto** | **Rehecho.** Se comprobó lanzando los cuatro de verdad (`cargo run --example token_check`). La marca que tenía codex (`tokens used`) **era vieja y ya no aparece**. Hoy: claude dice «You've used N% of your weekly limit» y codex «N% context left». **agy** no dijo nada en 70 s y **opencode** no arranca (sin modelo configurado): los dos siguen sin marca. |
 | **Skills de ECC en agy** | Diagnosticado y **no es del proyecto**: codex tiene 209 skills en `~/.codex/skills` y su `ecc-install-state.json`; agy solo una en `~/.gemini/skills` y ningún estado de instalación. ECC nunca se instaló para agy. |
 | **Captura real con agentes** | La landing usa una recreación generada con codex, etiquetada como tal. Falta lanzar dos o tres agentes de verdad y capturar. |
-| **Repositorio público** | Decisión del usuario. Mientras sea privado, la descarga de la release solo le sirve a él. Ya se comprobó que no hay secretos en el historial. |
+| **Repositorio público** | **Hecho.** `oruka` es público desde el 2026-08-21; historial revisado, sin secretos. **`folio` tambien quedo publico por error** y está pendiente de decidir si se cierra. |
 | **Rotar el token de Supabase** | El `refresh_token` quedó visible en un transcript. Cerrar sesión en la app y volver a entrar lo revoca. |
 
 ### Infraestructura
@@ -374,15 +421,21 @@ Al terminar, borrar los repositorios de pruebas.
 
 ### Ideas
 
-- Subir el tope de 5000 caracteres por idea, que ya se está tocando.
-- Editar la descripción de un proyecto y poder borrarlo.
+- Subir el tope de 5000 caracteres por idea. **Bloqueado:** no está en el
+  código, es una restricción de la base de datos de producción. Es una
+  migración de Supabase y necesita permiso explícito.
+- Editar la **descripción** de un proyecto. El título y el borrado ya están
+  (doble clic para renombrar; borrar avisa de cuántas ideas se pierden).
 - Imagen: transcripción y mockup ASCII. Están en `ai.ts` pero sin interfaz.
   Prioridad baja: de 86 ideas reales, ninguna es de imagen.
 
 ### Workspace
 
 - Selector de layout manual.
-- Estado real del agente: inactivo, trabajando, esperando, error.
+- ~~Estado real del agente~~ **hecho**: el punto de cada panel dice trabajando
+  (late), en silencio o terminado. Solo tres y no cuatro a propósito: «inactivo»
+  y «esperando» son indistinguibles desde fuera, e inventar esa diferencia sería
+  decirle al usuario algo que no se sabe.
 - Divisores arrastrables.
 - Buscar dentro de la terminal.
 
@@ -390,7 +443,11 @@ Al terminar, borrar los repositorios de pruebas.
 
 - Formulario para añadir un MCP propio.
 - Credenciales en el gestor del sistema.
-- Soportar `opencode.jsonc` con comentarios en vez de negarse.
+- Soportar `opencode.jsonc` con comentarios en vez de negarse. Hoy Oruka se
+  niega porque `serde_json` no entiende comentarios y reescribir el archivo se
+  los borraría. El camino: localizar el tramo del objeto `mcp` en el texto
+  original y editar **solo ese tramo**, dejando intacto todo lo demás — que es
+  lo que `toml_edit` hace solo para codex.
 
 ### Cierre
 
