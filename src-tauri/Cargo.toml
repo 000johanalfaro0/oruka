@@ -1,6 +1,6 @@
 [package]
 name = "oruka"
-version = "0.1.8"
+version = "0.1.9"
 description = "Orquestador desktop de agentes CLI"
 edition = "2021"
 rust-version = "1.77"
