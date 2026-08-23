@@ -441,6 +441,7 @@ es una migración de Supabase y necesita permiso explícito.
 
 ### MCP
 
+- **Plantillas de fábrica disponibles (8):** GitHub, Context7, **Browser Harness** (`@blopai/browser-harness`), Playwright, Filesystem, Memory, Pencil y Browser Use.
 - Formulario para añadir un MCP propio.
 - Credenciales en el gestor del sistema.
 - Soportar `opencode.jsonc` con comentarios en vez de negarse. Hoy Oruka se
