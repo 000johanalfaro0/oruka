@@ -193,14 +193,11 @@ fn extra_path_dirs() -> Vec<PathBuf> {
         hide_console(&mut cmd);
         let Ok(salida) = cmd.output() else { continue };
         let texto = String::from_utf8_lossy(&salida.stdout);
-        // La linea es "    Path    REG_EXPAND_SZ    C:algo;C:otro"
+        // La linea es "    Path    REG_EXPAND_SZ    C:algo;C:otro".
         let Some(linea) = texto.lines().find(|l| l.trim_start().starts_with("Path")) else {
             continue;
         };
-        let Some(valor) = linea.split_whitespace().nth(2).map(|_| {
-            let mut partes = linea.trim().splitn(3, char::is_whitespace);
-            partes.nth(2).unwrap_or("").trim().to_string()
-        }) else {
+        let Some(valor) = valor_del_path(linea) else {
             continue;
         };
         for tramo in valor.split(';') {
@@ -217,6 +214,21 @@ fn extra_path_dirs() -> Vec<PathBuf> {
         }
     }
     dirs
+}
+
+/// Saca el valor de una linea de `reg query`.
+///
+/// No vale contar campos separados por espacios: el nombre y el tipo van
+/// separados por varios, asi que el tipo acababa pegado a la primera ruta y esa
+/// carpeta desaparecia entera del PATH sin decir nada. Se corta por el tipo y
+/// se toma lo que venga detras, que ademas puede llevar espacios.
+#[cfg(windows)]
+fn valor_del_path(linea: &str) -> Option<String> {
+    ["REG_EXPAND_SZ", "REG_SZ"]
+        .iter()
+        .find_map(|tipo| linea.split_once(tipo))
+        .map(|(_, resto)| resto.trim().to_string())
+        .filter(|v| !v.is_empty())
 }
 
 /// Sustituye `%VAR%` por su valor. Lo que no exista se deja tal cual.
@@ -290,7 +302,7 @@ fn read_version(path: &PathBuf, args: &[String]) -> Option<String> {
 }
 
 /// Construye el comando teniendo en cuenta los shims de Windows.
-fn build_command(path: &PathBuf, args: &[String]) -> Command {
+pub fn build_command(path: &PathBuf, args: &[String]) -> Command {
     let is_script = path
         .extension()
         .and_then(|e| e.to_str())
@@ -365,21 +377,23 @@ pub fn install(id: &str) -> Result<String, String> {
         .install
         .ok_or_else(|| format!("{} no declara como instalarse", m.name))?;
 
-    // En Windows npm y npx son shims .cmd, que CreateProcess no ejecuta: hay
-    // que pasar por cmd.exe. Es la misma trampa que con los CLIs de agente.
-    let mut cmd = if cfg!(windows) {
-        let mut c = Command::new("cmd");
-        c.arg("/C").arg(&spec.command);
-        c
-    } else {
-        Command::new(&spec.command)
-    };
-    cmd.args(&spec.args);
-    hide_console(&mut cmd);
+    // El comando se busca con resolve_bin y se lanza por su **ruta absoluta**,
+    // nunca por su nombre pelado. Darle "npm" a cmd.exe lo deja a merced del
+    // PATH heredado, que en Windows es una foto vieja (trampa 34): justo
+    // despues de instalar Node.js desde Oruka, instalar un CLI fallaba con
+    // «"npm" no se reconoce» mientras la fila de al lado mostraba la version
+    // de Node, que si se habia encontrado mirando el registro.
+    let ruta = resolve_bin(&spec.command).ok_or_else(|| {
+        format!(
+            "no se encontro «{}» en este equipo. Si acabas de instalarlo, cierra Oruka y vuelve a abrirla.",
+            spec.command
+        )
+    })?;
+    let mut cmd = build_command(&ruta, &spec.args);
 
     let salida = cmd
         .output()
-        .map_err(|e| format!("no se pudo lanzar {}: {e}", spec.command))?;
+        .map_err(|e| format!("no se pudo lanzar {}: {e}", ruta.display()))?;
     let texto = format!(
         "{}{}",
         String::from_utf8_lossy(&salida.stdout),
@@ -457,6 +471,25 @@ mod tests_path {
         for d in &dirs {
             assert!(d.is_dir(), "{} no existe", d.display());
         }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn la_primera_carpeta_del_path_no_se_pierde() {
+        // Tal cual lo escupe reg.exe, con varios espacios entre campos.
+        let linea = r"    Path    REG_EXPAND_SZ    C:\Users\x\.cargo\bin;C:\Program Files\nodejs\";
+        let valor = valor_del_path(linea).expect("deberia sacar el valor");
+        let trozos: Vec<&str> = valor.split(';').collect();
+        // El fallo dejaba el tipo pegado al primer trozo: dejaba de ser una
+        // carpeta, se descartaba, y cargo se volvia invisible sin decir nada.
+        assert_eq!(trozos[0], r"C:\Users\x\.cargo\bin");
+        // Y una ruta con espacios sigue entera.
+        assert_eq!(trozos[1], r"C:\Program Files\nodejs\");
+        assert_eq!(
+            valor_del_path(r"    Path    REG_SZ    C:\algo"),
+            Some(r"C:\algo".to_string())
+        );
+        assert_eq!(valor_del_path("una linea sin tipo"), None);
     }
 
     #[cfg(windows)]

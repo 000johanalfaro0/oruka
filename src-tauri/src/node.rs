@@ -74,19 +74,17 @@ pub fn install() -> Result<String, String> {
         return Err("En Linux, instala Node.js a través del gestor de paquetes de tu distribución (ej. sudo apt install nodejs npm)".into());
     };
 
-    let mut cmd = if cfg!(windows) {
-        let mut c = Command::new("cmd");
-        c.arg("/C").arg(bin);
-        c
-    } else {
-        Command::new(bin)
-    };
-    cmd.args(&args);
-    crate::registry::hide_console(&mut cmd);
+    // Por su ruta absoluta, no por el nombre: es la misma trampa 34 que al
+    // instalar un CLI. Si winget se instalo despues de iniciar sesion, el PATH
+    // heredado no lo tiene y la instalacion moriria diciendo que no existe.
+    let ruta = crate::registry::resolve_bin(bin)
+        .ok_or_else(|| format!("no se encontro «{bin}» en este equipo"))?;
+    let args: Vec<String> = args.into_iter().map(String::from).collect();
+    let mut cmd = crate::registry::build_command(&ruta, &args);
 
     let salida = cmd
         .output()
-        .map_err(|e| format!("no se pudo lanzar {bin}: {e}"))?;
+        .map_err(|e| format!("no se pudo lanzar {}: {e}", ruta.display()))?;
 
     let texto = format!(
         "{}{}",

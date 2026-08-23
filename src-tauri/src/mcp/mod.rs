@@ -172,7 +172,7 @@ pub struct CliMcpState {
 
 /// Catalogo de fabrica.
 pub fn catalog() -> Vec<McpServer> {
-    const SOURCES: [&str; 8] = [
+    const SOURCES: [&str; 7] = [
         include_str!("../../../packages/mcp/github.json"),
         include_str!("../../../packages/mcp/context7.json"),
         include_str!("../../../packages/mcp/browser-harness.json"),
@@ -180,7 +180,6 @@ pub fn catalog() -> Vec<McpServer> {
         include_str!("../../../packages/mcp/filesystem.json"),
         include_str!("../../../packages/mcp/memory.json"),
         include_str!("../../../packages/mcp/pencil.json"),
-        include_str!("../../../packages/mcp/browser-use.json"),
     ];
     SOURCES
         .iter()
@@ -380,8 +379,6 @@ mod tests {
         // La mayoria va con npx, que viene con Node y siempre esta. Declarar
         // una dependencia que no existe llenaria la pantalla de avisos falsos.
         let cat = catalog();
-        let con = cat.iter().filter(|s| s.requires.is_some()).count();
-        assert!(con >= 1, "browser-use deberia declarar que necesita uv");
         for s in &cat {
             if let Some(r) = &s.requires {
                 assert!(!r.bin.is_empty(), "{} declara una dependencia sin binario", s.id);

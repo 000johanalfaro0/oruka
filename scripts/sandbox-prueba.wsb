@@ -1,0 +1,19 @@
+<Configuration>
+  <!-- Windows limpio y desechable para probar el instalador de Oruka como lo
+       vería alguien que no tiene nada instalado: ni Node, ni Rust, ni CLIs.
+       Al cerrar la ventana se borra todo. Requiere tener activada la
+       caracteristica "Espacio aislado de Windows". -->
+  <VGpu>Disable</VGpu>
+  <Networking>Enable</Networking>
+  <MemoryInMB>4096</MemoryInMB>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>C:\Users\jomor\Desktop\oruka\src-tauri\target\release\bundle\nsis</HostFolder>
+      <SandboxFolder>C:\Users\WDAGUtilityAccount\Desktop\instaladores</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <Command>explorer.exe C:\Users\WDAGUtilityAccount\Desktop\instaladores</Command>
+  </LogonCommand>
+</Configuration>
