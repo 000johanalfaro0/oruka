@@ -93,7 +93,16 @@ pub fn block(agents: &[RoleAgent]) -> String {
     }
     out.push_str(
         "\nSi vas a tocar algo que claramente le toca a otro, dilo en tu\n\
-         respuesta en vez de hacerlo por tu cuenta.\n\n",
+         respuesta en vez de hacerlo por tu cuenta.\n\n\
+         ## Forma de explicar el trabajo\n\n\
+         Explica por defecto para una persona que entiende logica, algoritmos y\n\
+         diagramas de flujo, pero no necesita detalles de implementacion. Usa\n\
+         hasta tres bloques compactos: que cambio y por que; un diagrama pequeno\n\
+         solo cuando aclare una secuencia o decision; y resultado, riesgo o\n\
+         siguiente decision cuando exista. Evita nombres internos salvo que el\n\
+         usuario los pida o sean necesarios para diagnosticar, verificar, operar\n\
+         o mantener seguro el sistema. Una respuesta trivial puede ser una sola\n\
+         frase.\n\n",
     );
     out.push_str(MARK_END);
     out
@@ -289,6 +298,8 @@ mod tests {
         assert!(b.contains("Codex CLI"));
         assert!(b.starts_with(MARK_START));
         assert!(b.ends_with(MARK_END));
+        assert!(b.contains("## Forma de explicar el trabajo"));
+        assert!(b.contains("hasta tres bloques compactos"));
     }
 
     #[test]

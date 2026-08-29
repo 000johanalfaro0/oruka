@@ -436,6 +436,7 @@ es una migración de Supabase y necesita permiso explícito.
   (late), en silencio o terminado. Solo tres y no cuatro a propósito: «inactivo»
   y «esperando» son indistinguibles desde fuera, e inventar esa diferencia sería
   decirle al usuario algo que no se sabe.
+- ~~Copiar y pegar en las terminales de los agentes~~ **hecho**: soporte completo de teclado (Ctrl+C con selección copia en vez de interrumpir, Ctrl+V/Ctrl+Shift+V/Shift+Insert pega respetando bracketed paste, Ctrl+A selecciona todo), pegado nativo del portapapeles y menú contextual con Copiar, Pegar, Seleccionar todo y Limpiar.
 - Divisores arrastrables.
 - Buscar dentro de la terminal.
 

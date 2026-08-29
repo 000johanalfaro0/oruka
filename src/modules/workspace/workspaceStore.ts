@@ -253,18 +253,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         }
       }
       // Se reconstruye la lista entera: acumular duplicaria los proyectos en
-      // cada montaje del modulo.
+      // cada montaje del modulo. Si una raiz ya no existe en disco, se omite
+      // limpiamente sin ensuciar la interfaz con errores de sistema.
       const all: ProjectEntry[] = []
-      const problems: string[] = []
       for (const root of saved.roots) {
         try {
           all.push(...(await listProjects(root)))
-        } catch (e) {
-          // Tragarse esto dejaba una lista vacia sin explicacion.
-          problems.push(`${root}: ${String(e)}`)
+        } catch {
+          // Si una carpeta fue movida o borrada en disco, se ignora silenciosamente.
         }
       }
-      set({ discovered: dedupe(all), error: problems.length ? problems.join(' | ') : null })
+      set({ discovered: dedupe(all), error: null })
     } catch (e) {
       set({ error: String(e) })
     } finally {
@@ -274,12 +273,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   addRoot: async (path) => {
     if (get().roots.includes(path)) return
-    set((s) => ({ roots: [...s.roots, path] }))
+    set((s) => ({ roots: [...s.roots, path], error: null }))
     try {
       const found = await listProjects(path)
-      set((s) => ({ discovered: dedupe([...s.discovered, ...found]) }))
+      set((s) => ({ discovered: dedupe([...s.discovered, ...found]), error: null }))
     } catch (e) {
-      set({ error: String(e) })
+      set({ error: `No se pudo leer la carpeta seleccionada: ${String(e)}` })
     }
     persist(get())
   },
@@ -288,6 +287,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     set((s) => ({
       roots: s.roots.filter((r) => r !== path),
       discovered: s.discovered.filter((p) => !p.path.startsWith(path)),
+      error: null,
     }))
     persist(get())
   },

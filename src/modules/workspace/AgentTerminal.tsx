@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
@@ -10,30 +10,31 @@ import {
   onAgentExit,
   onAgentOutput,
 } from '@/lib/agents'
+import { useContextMenu, type MenuItem } from '@/shared/ContextMenu'
 import '@xterm/xterm/css/xterm.css'
 
-/** Paleta ANSI de VS Code, para que un agente se vea igual dentro que fuera. */
-const VSCODE_THEME = {
-  background: '#1f1f1f',
-  foreground: '#cccccc',
-  cursor: '#cccccc',
-  selectionBackground: '#264f78',
-  black: '#000000',
-  red: '#cd3131',
-  green: '#0dbc79',
-  yellow: '#e5e510',
-  blue: '#2472c8',
-  magenta: '#bc3fbc',
-  cyan: '#11a8cd',
-  white: '#e5e5e5',
-  brightBlack: '#666666',
-  brightRed: '#f14c4c',
-  brightGreen: '#23d18b',
-  brightYellow: '#f5f543',
-  brightBlue: '#3b8eea',
-  brightMagenta: '#d670d6',
-  brightCyan: '#29b8db',
-  brightWhite: '#e5e5e5',
+/** Paleta ANSI inspirada en el tema oscuro de Antigravity. */
+const ANTIGRAVITY_THEME = {
+  background: '#101010',
+  foreground: '#f0f0f0',
+  cursor: '#ffffff',
+  selectionBackground: 'rgba(77, 120, 204, 0.35)',
+  black: '#161616',
+  red: '#ea4335',
+  green: '#34a853',
+  yellow: '#fbbc04',
+  blue: '#4d78cc',
+  magenta: '#c58af9',
+  cyan: '#24c1e0',
+  white: '#f1f3f4',
+  brightBlack: '#5f6368',
+  brightRed: '#f28b82',
+  brightGreen: '#81c995',
+  brightYellow: '#fdd663',
+  brightBlue: '#8ab4f8',
+  brightMagenta: '#d7aefb',
+  brightCyan: '#78d9ec',
+  brightWhite: '#ffffff',
 }
 
 /**
@@ -68,6 +69,8 @@ interface Props {
  */
 export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
+  const termRef = useRef<Terminal | null>(null)
+  const { open: openContext, menu } = useContextMenu()
 
   useEffect(() => {
     const host = hostRef.current
@@ -76,16 +79,112 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
     const term = new Terminal({
       fontFamily: 'Cascadia Code, Cascadia Mono, Consolas, monospace',
       fontSize: 13,
-      theme: VSCODE_THEME,
+      theme: ANTIGRAVITY_THEME,
       cursorBlink: true,
       // Acotado a proposito: el scrollback ilimitado es una fuga lenta.
       scrollback: 5000,
       allowProposedApi: true,
     })
+    termRef.current = term
     const cleanups: Array<() => void> = []
     const fit = new FitAddon()
     term.loadAddon(fit)
     term.open(host)
+
+    /**
+     * Soporte de copiar y pegar en la terminal:
+     *
+     * 1. Teclas rapidas:
+     *    - Ctrl+C / Cmd+C: si hay seleccion, copia al portapapeles y NO interrumpe al agente
+     *      (evita mandar \x03 al PTY). Si no hay seleccion, pasa \x03 (SIGINT) para interrumpir.
+     *    - Ctrl+Shift+C: copia la seleccion al portapapeles.
+     *    - Ctrl+V / Cmd+V / Ctrl+Shift+V / Shift+Insert: lee del portapapeles y pega usando
+     *      term.paste (evita que xterm mande el byte crudo \x16 y respeta bracketed paste).
+     *    - Ctrl+A / Cmd+A: selecciona todo el texto de la terminal.
+     */
+    term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+      const isCtrlOrCmd = e.ctrlKey || e.metaKey
+      const key = e.key.toLowerCase()
+
+      // Copiar con Ctrl+C / Cmd+C o Ctrl+Shift+C
+      if (isCtrlOrCmd && key === 'c') {
+        if (term.hasSelection()) {
+          if (e.type === 'keydown') {
+            const selection = term.getSelection()
+            if (selection) {
+              void navigator.clipboard.writeText(selection)
+            }
+          }
+          // Bloquear que xterm mande \x03 al proceso cuando solo se queria copiar texto
+          return false
+        }
+        // Sin seleccion: deja pasar Ctrl+C para mandar \x03 (interrumpir agente)
+        return true
+      }
+
+      // Pegar con Ctrl+V / Cmd+V o Ctrl+Shift+V o Shift+Insert
+      const isPaste =
+        (isCtrlOrCmd && !e.altKey && key === 'v') ||
+        (e.shiftKey && (e.key === 'Insert' || key === 'v'))
+
+      if (isPaste) {
+        if (e.type === 'keydown') {
+          navigator.clipboard
+            .readText()
+            .then((text) => {
+              if (text && alive) {
+                term.paste(text)
+              }
+            })
+            .catch(() => {})
+        }
+        return false
+      }
+
+      // Seleccionar todo con Ctrl+A / Cmd+A
+      if (isCtrlOrCmd && !e.shiftKey && !e.altKey && key === 'a') {
+        if (e.type === 'keydown') {
+          term.selectAll()
+        }
+        return false
+      }
+
+      return true
+    })
+
+    // 2. Evento nativo de pegado en el contenedor (captura pegado por menu o eventos del SO):
+    const handlePaste = (e: ClipboardEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const text = e.clipboardData?.getData('text')
+      if (text) {
+        term.paste(text)
+      } else {
+        navigator.clipboard
+          .readText()
+          .then((clipText) => {
+            if (clipText && alive) term.paste(clipText)
+          })
+          .catch(() => {})
+      }
+    }
+    host.addEventListener('paste', handlePaste)
+    cleanups.push(() => host.removeEventListener('paste', handlePaste))
+
+    // 3. Clic central (rueda del raton) para pegar texto del portapapeles:
+    const handleAuxClick = (e: MouseEvent) => {
+      if (e.button === 1) {
+        e.preventDefault()
+        navigator.clipboard
+          .readText()
+          .then((text) => {
+            if (text && alive) term.paste(text)
+          })
+          .catch(() => {})
+      }
+    }
+    host.addEventListener('auxclick', handleAuxClick)
+    cleanups.push(() => host.removeEventListener('auxclick', handleAuxClick))
 
     /**
      * Pintar por GPU en vez de por DOM.
@@ -115,6 +214,12 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
 
     let alive = true
     let ready = false
+
+    term.onData((data) => {
+      if (alive && ready) {
+        void agentWrite(sessionId, data)
+      }
+    })
 
     /**
      * Bytes ya pintados. Hasta saberlo, lo que llega se encola en vez de
@@ -182,7 +287,6 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
       }
 
       ready = true
-      term.onData((data) => void agentWrite(sessionId, data))
       void agentResize(sessionId, term.cols, term.rows)
     }
 
@@ -198,11 +302,61 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
 
     return () => {
       alive = false
+      termRef.current = null
       observer.disconnect()
       cleanups.forEach((fn) => fn())
       term.dispose()
     }
   }, [sessionId, cliId, cwd, mode, prompt, resume])
 
-  return <div className="agent-term__host" ref={hostRef} />
+  const handleContextMenu = (e: ReactMouseEvent) => {
+    e.preventDefault()
+    const term = termRef.current
+    if (!term) return
+
+    const hasSelection = term.hasSelection()
+    const items: MenuItem[] = [
+      {
+        label: 'Copiar',
+        icon: 'copy',
+        disabled: !hasSelection,
+        action: () => {
+          const sel = term.getSelection()
+          if (sel) {
+            void navigator.clipboard.writeText(sel)
+          }
+        },
+      },
+      {
+        label: 'Pegar',
+        icon: 'clippy',
+        action: () => {
+          navigator.clipboard
+            .readText()
+            .then((text) => {
+              if (text) term.paste(text)
+            })
+            .catch(() => {})
+        },
+      },
+      {
+        label: 'Seleccionar todo',
+        icon: 'selection',
+        action: () => term.selectAll(),
+      },
+      {},
+      {
+        label: 'Limpiar terminal',
+        icon: 'clear-all',
+        action: () => term.clear(),
+      },
+    ]
+    openContext(e, items)
+  }
+
+  return (
+    <div className="agent-term__host" ref={hostRef} onContextMenu={handleContextMenu}>
+      {menu}
+    </div>
+  )
 }

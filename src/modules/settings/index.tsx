@@ -4,14 +4,16 @@ import { relaunchSetup } from '@/setup/QuickSetup'
 import { McpMatrix } from '@/shared/McpMatrix'
 import { GithubAccount } from '@/shared/GithubAccount'
 import { RolesPanel } from '@/shared/RolesPanel'
+import { SkillsMatrix } from '@/shared/SkillsMatrix'
 import './settings.css'
 
-type Section = 'workspace' | 'clis' | 'mcp' | 'roles' | 'github' | 'apariencia'
+type Section = 'workspace' | 'clis' | 'mcp' | 'skills' | 'roles' | 'github' | 'apariencia'
 
 const SECTIONS: { id: Section; label: string; icon: string }[] = [
   { id: 'workspace', label: 'Carpetas de trabajo', icon: 'root-folder' },
   { id: 'clis', label: 'CLIs de IA', icon: 'terminal' },
   { id: 'mcp', label: 'MCP', icon: 'plug' },
+  { id: 'skills', label: 'Skills', icon: 'sparkle' },
   { id: 'roles', label: 'Roles', icon: 'organization' },
   { id: 'github', label: 'GitHub', icon: 'github' },
   { id: 'apariencia', label: 'Apariencia', icon: 'symbol-color' },
@@ -51,6 +53,16 @@ export default function SettingsModule() {
           />
         )}
         {section === 'clis' && <CliSection />}
+        {section === 'skills' && (
+          <section>
+            <h2>Skills globales</h2>
+            <p className="settings__hint">
+              Sincroniza el mismo sistema reusable en cada CLI. Oruka muestra el diff antes de
+              escribir y conserva una copia previa.
+            </p>
+            <SkillsMatrix />
+          </section>
+        )}
         {section === 'workspace' && (
           <button className="settings__relaunch" onClick={relaunchSetup}>
             <i className="codicon codicon-debug-restart" aria-hidden="true" />

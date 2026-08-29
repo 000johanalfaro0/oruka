@@ -21,7 +21,6 @@ import './workspace.css'
 export default function WorkspaceModule() {
   const init = useWorkspaceStore((s) => s.init)
   const roots = useWorkspaceStore((s) => s.roots)
-  const projects = useWorkspaceStore((s) => s.discovered)
   const open = useWorkspaceStore((s) => s.open)
   const activePath = useWorkspaceStore((s) => s.activePath)
   const addRoot = useWorkspaceStore((s) => s.addRoot)
@@ -76,85 +75,72 @@ export default function WorkspaceModule() {
 
   return (
     <div className="ws-stack">
-      {/* Lista de proyectos: visible cuando no hay pestana activa. */}
+      {/* Lista de carpetas de trabajo: visible cuando no hay pestana activa. */}
       <div className="ws-layer" hidden={activePath !== null}>
         <div className="ws-picker">
           <div className="ws-picker__head">
-            <h2 className="ws-picker__title">Proyectos</h2>
+            <h2 className="ws-picker__title">Carpetas de trabajo</h2>
             <button className="ws-picker__addroot" onClick={() => void pickRoot()}>
               <i className="codicon codicon-add" aria-hidden="true" />
-              <span>Otra carpeta</span>
+              <span>Abrir otra carpeta</span>
             </button>
           </div>
           <ul className="ws-picker__list">
-            {projects.map((p) => (
-              <li key={p.path}>
-                <button
+            {roots.map((r) => (
+              <li key={r}>
+                <div
                   className="ws-picker__item"
-                  onClick={() => openProject(p.path)}
+                  onClick={() => openProject(r)}
                   onContextMenu={(e) =>
                     openMenu(e, [
-                      { label: 'Abrir', icon: 'go-to-file', action: () => openProject(p.path) },
+                      { label: 'Abrir', icon: 'go-to-file', action: () => openProject(r) },
                       {},
                       {
                         label: 'Abrir en el explorador',
                         icon: 'folder-opened',
-                        action: () => void revealInExplorer(p.path),
+                        action: () => void revealInExplorer(r),
                       },
                       {
                         label: 'Copiar ruta',
                         icon: 'copy',
-                        action: () => void navigator.clipboard.writeText(p.path),
+                        action: () => void navigator.clipboard.writeText(r),
+                      },
+                      {},
+                      {
+                        label: 'Quitar de la lista',
+                        icon: 'close',
+                        danger: true,
+                        action: () => void removeRoot(r),
                       },
                     ])
                   }
-                  data-tip={p.path}
+                  data-tip={r}
                 >
-                  <i
-                    className={`codicon codicon-${p.is_git ? 'source-control' : 'folder'}`}
-                    aria-hidden="true"
-                  />
-                  <span>{p.name}</span>
-                </button>
+                  <i className="codicon codicon-root-folder" aria-hidden="true" />
+                  <div className="ws-picker__info">
+                    <span className="ws-picker__name">{baseName(r)}</span>
+                    <span className="ws-picker__path">{r}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="ws-picker__remove"
+                    title="Quitar de la lista"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      void removeRoot(r)
+                    }}
+                  >
+                    <i className="codicon codicon-close" aria-hidden="true" />
+                  </button>
+                </div>
               </li>
             ))}
-            {projects.length === 0 && (
+            {roots.length === 0 && (
               <li className="ws-picker__empty">
-                Esta carpeta no tiene subcarpetas. Puedes abrirla directamente como proyecto, o
-                añadir otra raíz.
+                No tienes carpetas de trabajo registradas. Pulsa en "Abrir otra carpeta" para comenzar.
               </li>
             )}
           </ul>
-
-          <div className="ws-roots">
-            <span className="ws-roots__label">Carpetas de trabajo</span>
-            {roots.map((r) => (
-              <span key={r} className="ws-root">
-                {/* El nombre, no la ruta entera: la barra se llenaba de
-                    `C:\Users\...` repetido y no se leia nada. La ruta completa
-                    sigue a un paso, en el tooltip. */}
-                <button
-                  className="ws-root__open"
-                  onClick={() => openProject(r)}
-                  data-tip={r}
-                  aria-label={`Abrir ${r} como proyecto`}
-                >
-                  <i className="codicon codicon-root-folder" aria-hidden="true" />
-                  {baseName(r)}
-                </button>
-                <span className="ws-root__count">
-                  {projects.filter((p) => p.path.startsWith(r)).length}
-                </span>
-                <button
-                  className="ws-root__remove"
-                  title="Quitar esta carpeta"
-                  onClick={() => void removeRoot(r)}
-                >
-                  <i className="codicon codicon-close" aria-hidden="true" />
-                </button>
-              </span>
-            ))}
-          </div>
           {error && <p className="ws-picker__error">{error}</p>}
         </div>
       </div>

@@ -1,0 +1,35 @@
+.win-controls {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  margin-left: 2px;
+  -webkit-app-region: no-drag;
+}
+
+.win-controls__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.win-controls__btn:hover {
+  background: var(--hover);
+  color: var(--fg);
+}
+
+.win-controls__btn--close:hover {
+  background: #c42b1c;
+  color: #ffffff;
+}
+
+.win-controls__btn svg {
+  pointer-events: none;
+}

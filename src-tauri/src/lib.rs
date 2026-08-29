@@ -12,6 +12,7 @@ mod projects;
 mod pty;
 pub mod registry;
 mod roles;
+mod skills;
 mod store;
 
 use std::path::PathBuf;
@@ -74,6 +75,10 @@ pub fn run() {
             mcp_preview,
             mcp_apply,
             mcp_revert,
+            skills_catalog,
+            skills_state,
+            skills_preview,
+            skills_apply,
             roles_plan,
             roles_apply,
             roles_revert,
@@ -475,6 +480,22 @@ async fn mcp_missing() -> Vec<mcp::MissingRequirement> {
 #[tauri::command]
 async fn mcp_install_requirement(server_id: String) -> Result<String, String> {
     mcp::install_requirement(&server_id)
+}
+
+#[tauri::command]
+fn skills_catalog() -> Vec<skills::Skill> { skills::catalog() }
+
+#[tauri::command]
+fn skills_state(cli_ids: Vec<String>) -> Vec<skills::CliSkillState> { skills::state(&cli_ids) }
+
+#[tauri::command]
+fn skills_preview(cli_id: String, skill: skills::Skill, remove: bool) -> Result<String, String> {
+    skills::preview(&cli_id, &skill, remove)
+}
+
+#[tauri::command]
+fn skills_apply(cli_id: String, skill: skills::Skill, remove: bool) -> Result<String, String> {
+    skills::apply(&cli_id, &skill, remove)
 }
 
 /// Instala o actualiza un CLI con el comando que declare su manifiesto.
