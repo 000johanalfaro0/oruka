@@ -42,7 +42,7 @@ Medidas reales del build de release: instalador NSIS **2,03 MB**, binario 3,2 MB
 
 88 tests en Rust, 1 ignorado a propósito.
 
-**Versión publicada: 0.1.15.** La app se actualiza sola desde la 0.1.2. Publicar es `npm run publicar -- <version>
+**Versión publicada: 0.1.16.** La app se actualiza sola desde la 0.1.2. Publicar es `npm run publicar -- <version>
 "<notas>"`: firma, arma el manifiesto y sube la release en un paso. Hacerlo a mano
 son seis, y si falta el `latest.json` la comprobación falla **en silencio**.
 
@@ -466,7 +466,7 @@ release nueva. **Su fuente ya está en el repositorio**, en `docs/landing.html`.
 Lo que sí caduca es el **tamaño anunciado**: aparece cuatro veces en la página y
 hay que cambiarlo a mano cuando cambie el instalador. Hoy dice 2,00 MB.
 
-**Resuelto el 2026-08-22:** `v0.1.15` es la release `Latest`, así que
+**Resuelto el 2026-08-22:** `v0.1.16` es la release `Latest`, así que
 `releases/latest` ya reparte el instalador al día. Lo único que sigue
 caducando a mano es el tamaño anunciado.
 
