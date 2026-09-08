@@ -15,6 +15,7 @@ src-tauri/target/
 *.key.pub
 
 android/app/build/
+android/build/
 android/.gradle/
 android/app/src/main/assets/
 dist-apk/
