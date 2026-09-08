@@ -182,43 +182,48 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
                     setOtrasAbiertas((s) => ({ ...s, [host.id]: !s[host.id] }))
                   }
                 >
-                  <span>Otras carpetas ({cerradas.length})</span>
+                  <span>Buscar otra carpeta</span>
                   <span className="cerradas__flecha">{otrasAbiertas[host.id] ? '▾' : '▸'}</span>
                 </button>
 
                 {otrasAbiertas[host.id] && (
                   <>
-                    {cerradas.length > 6 && (
-                      <input
-                        type="search"
-                        className="cerradas__buscar"
-                        placeholder="Buscar una carpeta…"
-                        value={busquedas[host.id] ?? ''}
-                        onChange={(e) =>
-                          setBusquedas((s) => ({ ...s, [host.id]: e.target.value }))
-                        }
-                      />
+                    <input
+                      type="search"
+                      className="cerradas__buscar"
+                      placeholder="Escribe el nombre de una carpeta…"
+                      value={busquedas[host.id] ?? ''}
+                      onChange={(e) =>
+                        setBusquedas((s) => ({ ...s, [host.id]: e.target.value }))
+                      }
+                    />
+                    {(busquedas[host.id] ?? '').trim().length === 0 ? (
+                      <p className="cerradas__pista">
+                        {cerradas.length} carpeta{cerradas.length === 1 ? '' : 's'} más en este
+                        equipo. Escribe para buscar.
+                      </p>
+                    ) : (
+                      cerradas
+                        .filter((c) =>
+                          c.name.toLowerCase().includes((busquedas[host.id] ?? '').toLowerCase()),
+                        )
+                        .map((c) => (
+                          <button
+                            type="button"
+                            className="row"
+                            key={c.path}
+                            disabled={!enLinea || pendiente === c.path}
+                            onClick={() => void pedir(host, c.path, 'open_project')}
+                          >
+                            <span className="row__text">
+                              <span className="row__title">{c.name}</span>
+                            </span>
+                            <span className="row__hint">
+                              {pendiente === c.path ? 'abriendo…' : 'abrir'}
+                            </span>
+                          </button>
+                        ))
                     )}
-                    {cerradas
-                      .filter((c) =>
-                        c.name.toLowerCase().includes((busquedas[host.id] ?? '').toLowerCase()),
-                      )
-                      .map((c) => (
-                        <button
-                          type="button"
-                          className="row"
-                          key={c.path}
-                          disabled={!enLinea || pendiente === c.path}
-                          onClick={() => void pedir(host, c.path, 'open_project')}
-                        >
-                          <span className="row__text">
-                            <span className="row__title">{c.name}</span>
-                          </span>
-                          <span className="row__hint">
-                            {pendiente === c.path ? 'abriendo…' : 'abrir'}
-                          </span>
-                        </button>
-                      ))}
                   </>
                 )}
               </div>
