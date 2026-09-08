@@ -62,13 +62,15 @@ export function App() {
     <div className="app">
       <header className="topbar">
         <span className="topbar__title">{pestana === 'agentes' ? 'Agentes' : 'Ideas'}</span>
+        {versionNueva && (
+          <a className="update-pill" href={APK_URL} title={`Descargar la ${versionNueva}`}>
+            <span className="update-pill__icon" aria-hidden="true">
+              ⬆
+            </span>
+            {versionNueva} disponible
+          </a>
+        )}
       </header>
-
-      {versionNueva && (
-        <a className="update-banner" href={APK_URL}>
-          Hay una versión nueva ({versionNueva}) · toca para bajarla
-        </a>
-      )}
 
       <main className="body">
         {pestana === 'agentes' ? <Hosts onAbrir={setChat} /> : <Ideas />}

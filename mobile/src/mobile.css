@@ -1,21 +1,23 @@
 /* Estilos de la web del telefono.
  *
- * El color base sale de `src/ui/tokens.css`, la misma paleta del escritorio.
- * Aqui se define todo lo demas: tamano, ritmo, profundidad y movimiento -lo
- * que hace que una pantalla se sienta una app y no un formulario suelto.
+ * El color sale de `src/ui/tokens.css`, la misma paleta del escritorio -y el
+ * lenguaje visual tambien: superficies planas separadas por un borde de 1px,
+ * sin sombras ni degradados, con un acento de color solo donde pide accion o
+ * marca pertenencia (el borde izquierdo de una tarjeta). Un telefono necesita
+ * texto mas grande y botones mas altos para el dedo, pero eso es tamano, no
+ * un idioma visual distinto: mismo escritorio, pantalla mas chica.
  */
 
 :root {
   /* Los tamanos del escritorio estan pensados para leer de cerca, con el
      monitor a un palmo. Un telefono se lee mas lejos y con el dedo encima,
      asi que aqui se redefinen mas grandes -sin tocar tokens.css, que sigue
-     siendo lo que usa el escritorio. La escala salta fuerte a proposito:
-     un titulo tiene que leerse como titulo, no como texto grande. */
+     siendo lo que usa el escritorio. */
   --fs-xs: 13px;
   --fs-sm: 16px;
-  --fs-md: 18px;
-  --fs-lg: 22px;
-  --fs-xl: 30px;
+  --fs-md: 17px;
+  --fs-lg: 20px;
+  --fs-xl: 26px;
 
   /* Ritmo. Todo el espaciado de esta app sale de aqui, no de numeros sueltos. */
   --sp-1: 4px;
@@ -25,18 +27,16 @@
   --sp-5: 24px;
   --sp-6: 32px;
 
-  /* Esquinas mas redondeadas que el escritorio: un dedo perdona menos las
-     esquinas vivas que un cursor. */
-  --radius-sm: 10px;
-  --radius: 14px;
-  --radius-lg: 20px;
+  /* Un poco mas redondeado que el escritorio -un dedo perdona menos las
+     esquinas vivas que un cursor- pero la misma familia, no otra. */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
   --radius-pill: 999px;
 
-  /* Profundidad. Sin esto todo queda plano, como una lista de correo. */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 8px 24px -6px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 20px 48px -12px rgba(0, 0, 0, 0.6);
-  --ring: 0 0 0 4px var(--selection);
+  /* Anillo de foco, para teclado/lector de pantalla. No es una sombra
+     decorativa: es el mismo recurso que ya usa el escritorio para marcar foco. */
+  --ring: 0 0 0 3px var(--selection);
 
   color-scheme: dark;
 }
@@ -73,14 +73,9 @@ textarea {
 
 button {
   transition:
-    transform 120ms ease,
-    background-color 150ms ease,
-    opacity 150ms ease,
-    box-shadow 150ms ease;
-}
-
-button:active {
-  transform: scale(0.97);
+    background-color 120ms ease,
+    opacity 120ms ease,
+    border-color 120ms ease;
 }
 
 /* Quien pide menos movimiento no deberia recibirlo por sorpresa. */
@@ -110,7 +105,6 @@ button:active {
   height: 100dvh;
   color: var(--fg-dim);
   font-size: var(--fs-md);
-  letter-spacing: 0.01em;
 }
 
 .topbar {
@@ -120,34 +114,33 @@ button:active {
   padding: var(--sp-3) var(--sp-4);
   padding-top: calc(var(--sp-3) + env(safe-area-inset-top));
   background: var(--bg-chrome);
-  box-shadow: var(--shadow-sm);
-  position: relative;
-  z-index: 2;
+  border-bottom: 1px solid var(--border);
 }
 
 .topbar__title {
   font-size: var(--fs-lg);
   font-weight: 700;
-  letter-spacing: -0.01em;
 }
 
-.update-banner {
+/* Un boton chico en la barra de arriba, como el de la version de escritorio
+ * -no una franja que ocupa todo el ancho. Es un aviso, no una interrupcion. */
+.update-pill {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: var(--sp-2);
-  padding: var(--sp-3) var(--sp-4);
-  font-size: var(--fs-sm);
-  font-weight: 600;
+  gap: 4px;
+  margin-left: auto;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
   color: var(--accent-fg);
-  background: linear-gradient(135deg, var(--accent), #4270cf);
-  text-align: center;
+  font-size: var(--fs-xs);
+  font-weight: 600;
   text-decoration: none;
-  box-shadow: var(--shadow-sm);
+  white-space: nowrap;
 }
 
-.update-banner::before {
-  content: '\2B06';
+.update-pill__icon {
+  font-size: 11px;
 }
 
 .topbar__sub {
@@ -191,11 +184,9 @@ button:active {
   display: flex;
   gap: var(--sp-2);
   background: var(--bg-chrome);
-  box-shadow: 0 -1px 0 var(--border), 0 -8px 24px -8px rgba(0, 0, 0, 0.5);
+  border-top: 1px solid var(--border);
   padding: var(--sp-2);
   padding-bottom: calc(var(--sp-2) + env(safe-area-inset-bottom));
-  position: relative;
-  z-index: 2;
 }
 
 .tab {
@@ -213,7 +204,6 @@ button:active {
 .tab--on {
   color: var(--accent-fg);
   background: var(--accent);
-  box-shadow: var(--shadow-sm);
 }
 
 /* --------------------------------------------------------------------- */
@@ -224,7 +214,6 @@ button:active {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--bg-elevated);
-  box-shadow: var(--shadow-md);
   margin-bottom: var(--sp-4);
   overflow: hidden;
 }
@@ -248,26 +237,23 @@ button:active {
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
-  min-height: 96px;
-  padding: var(--sp-4);
+  min-height: 92px;
+  padding: var(--sp-3) var(--sp-4);
   text-align: left;
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius);
   background: var(--bg-elevated);
-  box-shadow: var(--shadow-sm);
   color: var(--fg);
-  border-top: 3px solid var(--accent);
 }
 
 .idea-card:active {
   background: var(--hover);
-  box-shadow: var(--shadow-md);
 }
 
 .idea-card__title {
   font-size: var(--fs-md);
   font-weight: 700;
-  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 
@@ -293,52 +279,46 @@ button:active {
 }
 
 .dot {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex: 0 0 auto;
   background: var(--state-idle);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
 }
 
-.dot--online {
+.dot--online,
+.dot--esperando {
   background: var(--state-done);
-  box-shadow: 0 0 0 3px rgba(52, 168, 83, 0.2);
 }
 
 .dot--trabajando {
   background: var(--state-waiting);
-  box-shadow: 0 0 0 3px rgba(77, 120, 204, 0.25);
-}
-
-.dot--esperando {
-  background: var(--state-done);
-  box-shadow: 0 0 0 3px rgba(52, 168, 83, 0.2);
 }
 
 .dot--terminado {
   background: var(--state-idle);
 }
 
-/* Cada carpeta abierta y sus chats forman un solo bloque: un borde de color a
- * la izquierda que arranca en el nombre y sigue hasta el ultimo chat, para que
- * se vea que uno pertenece al otro y no son dos listas sueltas. */
+/* Cada carpeta abierta y sus chats son un solo bloque -un borde de color a la
+ * izquierda que arranca en el nombre y sigue hasta el ultimo chat- y cada
+ * chat va con una sangria clara respecto a la carpeta, para que se lea como
+ * "esto es hijo de eso" y no como dos listas al mismo nivel. */
 .card > div:not(.card__head):not(.cerradas) {
   margin: var(--sp-3);
   border-radius: var(--radius-sm);
   background: var(--bg-input);
-  border-left: 3px solid var(--accent);
+  border-left: 2px solid var(--accent);
   overflow: hidden;
 }
 
 .card > div:not(.card__head):not(.cerradas) .row {
-  padding-left: calc(var(--sp-4) + 6px);
+  padding-left: calc(var(--sp-4) * 2);
 }
 
 .group {
   display: flex;
   align-items: center;
-  padding: var(--sp-3) var(--sp-4) var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
   color: var(--fg);
   font-size: var(--fs-sm);
   font-weight: 700;
@@ -360,16 +340,15 @@ button:active {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   margin-right: var(--sp-3);
   border-radius: var(--radius-pill);
-  background: var(--bg-input);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
   color: var(--fg-dim);
   font-size: var(--fs-sm);
   line-height: 1;
-  box-shadow: var(--shadow-sm);
 }
 
 .group__cerrar:active {
@@ -404,31 +383,24 @@ button:active {
   background: transparent;
 }
 
+.cerradas__toggle:active {
+  background: var(--hover);
+}
+
 .cerradas__toggle > span:first-child::before {
   content: '\1F50D';
   margin-right: var(--sp-2);
 }
 
-.cerradas__pista {
-  margin: 0 var(--sp-4) var(--sp-3);
-  color: var(--fg-dim);
-  font-size: var(--fs-xs);
-}
-
-.cerradas__toggle:active {
-  background: var(--hover);
-}
-
 .cerradas__flecha {
   color: var(--fg-dim);
-  transition: transform 150ms ease;
 }
 
 .cerradas__buscar {
   display: block;
   width: calc(100% - 32px);
   margin: 0 var(--sp-4) var(--sp-3);
-  padding: var(--sp-3) var(--sp-3);
+  padding: var(--sp-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--bg-input);
@@ -441,13 +413,19 @@ button:active {
   box-shadow: var(--ring);
 }
 
+.cerradas__pista {
+  margin: 0 var(--sp-4) var(--sp-3);
+  color: var(--fg-dim);
+  font-size: var(--fs-xs);
+}
+
 /* Fila pulsable. 52px de alto: por debajo de eso se falla al tocar. */
 .row {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
   width: 100%;
-  min-height: 56px;
+  min-height: 52px;
   padding: var(--sp-3) var(--sp-4);
   border: none;
   border-top: 1px solid var(--border);
@@ -469,7 +447,7 @@ button:active {
 }
 
 .row__title {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .row__hint {
@@ -480,7 +458,6 @@ button:active {
 .row__chevron {
   margin-left: auto;
   color: var(--fg-dim);
-  font-size: var(--fs-md);
 }
 
 .empty {
@@ -523,13 +500,9 @@ button:active {
 
 .login__brand {
   margin: 0 0 var(--sp-1);
+  color: var(--fg);
   font-size: var(--fs-xl);
   font-weight: 800;
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, var(--fg) 40%, var(--accent) 120%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 
 .login__hint {
@@ -566,20 +539,18 @@ button:active {
 
 .primary {
   padding: var(--sp-4);
-  min-height: 52px;
+  min-height: 50px;
   border: none;
   border-radius: var(--radius);
-  background: linear-gradient(135deg, var(--accent), #4270cf);
+  background: var(--accent);
   color: var(--accent-fg);
   font-weight: 700;
   font-size: var(--fs-md);
-  box-shadow: var(--shadow-md);
   cursor: pointer;
 }
 
 .primary:disabled {
   opacity: 0.5;
-  box-shadow: none;
 }
 
 /* La otra forma de hacer lo mismo. Se ve, pero no compite con el boton azul. */
@@ -605,7 +576,6 @@ button:active {
   border: 2px solid var(--accent);
   border-radius: var(--radius-lg);
   background: var(--bg-input);
-  box-shadow: var(--shadow-lg);
 }
 
 /* --------------------------------------------------------------------- */
@@ -632,7 +602,7 @@ button:active {
   -webkit-overflow-scrolling: touch;
   margin: var(--sp-3) var(--sp-3) 0;
   padding: var(--sp-4);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius);
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   font-family: var(--font-mono);
@@ -672,12 +642,12 @@ button:active {
   padding: var(--sp-3);
   padding-bottom: calc(var(--sp-3) + env(safe-area-inset-bottom));
   background: var(--bg-chrome);
-  box-shadow: 0 -1px 0 var(--border);
+  border-top: 1px solid var(--border);
 }
 
 .composer textarea {
   flex: 1;
-  min-height: 48px;
+  min-height: 46px;
   max-height: 120px;
   padding: var(--sp-3) var(--sp-4);
   border: 1px solid var(--border-strong);
@@ -695,29 +665,26 @@ button:active {
 
 .composer button {
   flex: 0 0 auto;
-  height: 48px;
+  height: 46px;
   padding: 0 var(--sp-4);
   border: none;
   border-radius: var(--radius);
   background: var(--accent);
   color: var(--accent-fg);
   font-weight: 700;
-  box-shadow: var(--shadow-sm);
   cursor: pointer;
 }
 
 .composer button:disabled {
   opacity: 0.5;
-  box-shadow: none;
 }
 
 .composer .composer__foto {
-  width: 48px;
+  width: 46px;
   padding: 0;
   background: var(--bg-input);
   border: 1px solid var(--border-strong);
   font-size: var(--fs-lg);
-  box-shadow: none;
 }
 
 /* --------------------------------------------------------------------- */
@@ -742,5 +709,4 @@ button:active {
   color: var(--fg-dim);
   font-size: var(--fs-xs);
   font-weight: 600;
-  letter-spacing: 0.02em;
 }
