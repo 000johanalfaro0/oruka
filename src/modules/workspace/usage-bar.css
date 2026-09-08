@@ -1,56 +1,161 @@
-/* Gasto por CLI en la fila de abajo. Ningun color propio: todo de tokens.css.
+/* Barra de estado de Workspace en el pie.
  *
- * La regla que manda aqui es que la fila NO crece. Nada de esto declara altura
- * ni relleno vertical: la barra de estado ya fija la suya y todo se centra
- * dentro. Si algo de aqui empujara hacia arriba o hacia abajo, esta mal. */
+ * Muestra el proyecto activo, su rama Git y el estado real de los agentes
+ * (trabajando/esperando/terminado) sin estimaciones imprecisas de cuotas.
+ */
 
-.usage {
+.workspace-status {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   font-size: var(--fs-xs);
   color: var(--fg-muted);
-  /* Sin encogerse: al abrir varios agentes, las barras no se aplastan. */
   flex: 0 0 auto;
 }
 
-.usage__name {
+.workspace-status__project {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   color: var(--fg-dim);
+  font-weight: 500;
 }
 
-/* Fina y corta a proposito: tiene que caber en el pie sin pedir sitio. */
-.usage__bar {
-  position: relative;
-  width: 42px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--border);
-  overflow: hidden;
-}
-
-.usage__fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: var(--accent);
-  border-radius: 2px;
-  transition: width 220ms ease-out;
-}
-
-.usage__num {
-  font-variant-numeric: tabular-nums;
+.workspace-status__project .codicon {
+  font-size: 13px;
   color: var(--fg-muted);
-  /* Sitio fijo para tres caracteres: sin esto, pasar de 9% a 10% empuja lo
-     que tiene al lado y la fila entera da un salto. */
-  min-width: 30px;
-  text-align: right;
 }
 
-/* Queda poco. Se avisa con el color de error, que es el que ya usa la app
-   para «esto necesita tu atencion». */
-.usage.is-apurado .usage__fill {
-  background: var(--state-error);
+.workspace-status__git {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--accent);
+  margin-left: 2px;
+  font-size: 11px;
 }
 
-.usage.is-apurado .usage__num {
+.workspace-status__git .codicon {
+  font-size: 12px;
+  color: var(--accent);
+}
+
+/* Aviso del mando a distancia.
+ *
+ * Va en el color de error y con el punto latiendo a proposito: mientras esto
+ * esta encendido, un telefono puede escribir en los agentes de este equipo. Es
+ * lo unico del pie que el usuario tiene que ver aunque no lo busque.
+ */
+.workspace-status__remote {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--state-error);
+  background: transparent;
   color: var(--state-error);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.workspace-status__remote:hover {
+  background: var(--hover);
+}
+
+.workspace-status__remote-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--state-error);
+  flex-shrink: 0;
+  animation: agent-status-pulse 1.4s infinite ease-in-out;
+}
+
+/* El mando quedo apagado por un fallo. Se cuenta, no se esconde. */
+.workspace-status__remote-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--fg-muted);
+  font-size: 11px;
+}
+
+.workspace-status__remote-error .codicon {
+  font-size: 12px;
+  color: var(--state-error);
+}
+
+.workspace-status__divider {
+  color: var(--border-strong, var(--border));
+  opacity: 0.6;
+}
+
+.workspace-status__agents {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.agent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.agent-chip__name {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.agent-chip__mode {
+  color: var(--fg-muted);
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+.agent-chip__status {
+  color: var(--fg-dim);
+  font-size: 10px;
+}
+
+.agent-chip__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.agent-chip__dot--trabajando {
+  background: #388bfd;
+  box-shadow: 0 0 6px rgba(56, 139, 253, 0.8);
+  animation: agent-status-pulse 1.4s infinite ease-in-out;
+}
+
+.agent-chip__dot--esperando {
+  background: #52b380;
+}
+
+.agent-chip__dot--terminado {
+  background: #8b949e;
+}
+
+@keyframes agent-status-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
 }

@@ -1,0 +1,211 @@
+/* Modulo Movil.
+ *
+ * Ningun color se escribe aqui: todo sale de `src/ui/tokens.css`. El QR es la
+ * unica excepcion del mundo y no esta en este archivo: lo dibuja la libreria en
+ * blanco y negro, porque un QR con la paleta de la app no lo lee ninguna
+ * camara.
+ */
+
+.mob {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px 24px 40px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.mob__title {
+  margin: 0 0 4px;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+.mob__lead {
+  margin: 0 0 22px;
+  color: var(--fg-dim);
+  line-height: 1.6;
+}
+
+.mob__card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+
+.mob__card--on {
+  border-color: var(--state-error);
+}
+
+.mob__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mob__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+.mob__step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  color: var(--fg-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.mob__hint {
+  margin: 8px 0 0;
+  color: var(--fg-dim);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+}
+
+.mob__warn {
+  margin: 10px 0 0;
+  padding: 9px 11px;
+  border-left: 2px solid var(--state-error);
+  background: var(--bg-input);
+  color: var(--fg-muted);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+}
+
+.mob__error {
+  margin: 10px 0 0;
+  color: var(--state-error);
+  font-size: var(--fs-xs);
+}
+
+.mob__switch {
+  flex: 0 0 auto;
+  padding: 7px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.mob__switch:hover {
+  background: var(--hover);
+  color: var(--fg);
+}
+
+.mob__card--on .mob__switch {
+  border-color: var(--state-error);
+  color: var(--state-error);
+}
+
+.mob__estado {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+}
+
+.mob__punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--state-idle);
+}
+
+.mob__punto--on {
+  background: var(--state-error);
+}
+
+/* Zona del QR. Fondo claro con margen: un QR pegado al borde de un panel
+ * oscuro pierde su marco blanco y muchas camaras dejan de leerlo. */
+.mob__qr {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.mob__qr img {
+  width: 176px;
+  height: 176px;
+  border-radius: var(--radius);
+  image-rendering: pixelated;
+}
+
+.mob__qr-lado {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 200px;
+}
+
+.mob__codigo {
+  font-family: var(--font-mono);
+  font-size: var(--fs-lg);
+  letter-spacing: 2px;
+  color: var(--fg);
+  word-break: break-all;
+}
+
+.mob__cuenta {
+  color: var(--fg-dim);
+  font-size: var(--fs-xs);
+}
+
+.mob__enlace {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-dim);
+  word-break: break-all;
+}
+
+.mob__acciones {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.mob__boton {
+  padding: 8px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.mob__boton:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--fg);
+}
+
+.mob__boton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mob__boton--principal {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+}

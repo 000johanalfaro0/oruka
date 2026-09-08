@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { useContextMenu } from '@/shared/ContextMenu'
 import { revealInExplorer } from '@/lib/agents'
+import { writeClipboard } from '@/lib/clipboard'
 import { baseName } from '@/lib/paths'
 import { bus } from '@/shell/bus'
 import { AgentGrid } from './AgentGrid'
@@ -43,14 +44,14 @@ export default function WorkspaceModule() {
    */
   useEffect(
     () =>
-      bus.on('workspace.openWithAgent', ({ projectPath, cli, prompt }) => {
+      bus.on('workspace.openWithAgent', ({ projectPath, cli, prompt, resume }) => {
         const { openProject: abrir, addAgent, clis } = useWorkspaceStore.getState()
         abrir(projectPath)
         // Sin CLI pedido, el primero que este de verdad instalado.
         const elegido = cli ?? clis.find((c) => c.found)?.id
         if (!elegido) return
         const modo = useWorkspaceStore.getState().clis.find((c) => c.id === elegido)?.modes[0] ?? ''
-        addAgent(projectPath, elegido, modo, prompt)
+        addAgent(projectPath, elegido, modo, prompt, resume)
       }),
     [],
   )
@@ -103,7 +104,7 @@ export default function WorkspaceModule() {
                       {
                         label: 'Copiar ruta',
                         icon: 'copy',
-                        action: () => void navigator.clipboard.writeText(r),
+                        action: () => void writeClipboard(r),
                       },
                       {},
                       {

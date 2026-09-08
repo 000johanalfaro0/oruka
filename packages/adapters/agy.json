@@ -54,5 +54,10 @@
       "--accept-source-agreements",
       "--accept-package-agreements"
     ]
+  },
+  "browserExtension": {
+    "name": "Antigravity Browser Extension",
+    "chromeExtensionId": "eeijfnjmjelapkebgockoeaadonbchdd",
+    "chromeStoreUrl": "https://chromewebstore.google.com/detail/antigravity-browser-exten/eeijfnjmjelapkebgockoeaadonbchdd"
   }
 }

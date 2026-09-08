@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CliSection } from './CliSection'
 import { relaunchSetup } from '@/setup/QuickSetup'
 import { McpMatrix } from '@/shared/McpMatrix'
 import { GithubAccount } from '@/shared/GithubAccount'
 import { RolesPanel } from '@/shared/RolesPanel'
 import { SkillsMatrix } from '@/shared/SkillsMatrix'
+import { RouterSection } from '@/shared/RouterSection'
+import { ExtensionsPanel } from '@/shared/ExtensionsPanel'
+import { loadSoundSetting, saveSoundSetting } from '@/lib/notifications'
 import './settings.css'
 
-type Section = 'workspace' | 'clis' | 'mcp' | 'skills' | 'roles' | 'github' | 'apariencia'
+type Section = 'workspace' | 'clis' | 'mcp' | 'skills' | 'roles' | 'github' | 'router' | 'apariencia'
 
 const SECTIONS: { id: Section; label: string; icon: string }[] = [
   { id: 'workspace', label: 'Carpetas de trabajo', icon: 'root-folder' },
@@ -16,6 +19,7 @@ const SECTIONS: { id: Section; label: string; icon: string }[] = [
   { id: 'skills', label: 'Skills', icon: 'sparkle' },
   { id: 'roles', label: 'Roles', icon: 'organization' },
   { id: 'github', label: 'GitHub', icon: 'github' },
+  { id: 'router', label: 'Router', icon: 'radio-tower' },
   { id: 'apariencia', label: 'Apariencia', icon: 'symbol-color' },
 ]
 
@@ -69,6 +73,7 @@ export default function SettingsModule() {
             <span>Volver a ejecutar el Quick Setup</span>
           </button>
         )}
+        {section === 'workspace' && <SoundToggle />}
         {section === 'mcp' && (
           <section>
             <h2 className="settings__title">Servidores MCP</h2>
@@ -76,7 +81,10 @@ export default function SettingsModule() {
               Un mismo servidor se reparte a los CLIs que elijas. Oruka enseña el diff antes de
               tocar cada archivo, guarda una copia previa y deja revertir.
             </p>
-            <McpMatrix />
+            <div className="settings__mcp-layout">
+              <McpMatrix />
+              <ExtensionsPanel />
+            </div>
           </section>
         )}
         {section === 'roles' && (
@@ -100,6 +108,17 @@ export default function SettingsModule() {
             <GithubAccount />
           </section>
         )}
+        {section === 'router' && (
+          <section>
+            <h2 className="settings__title">9Router</h2>
+            <p className="settings__hint">
+              Reparte los agentes entre varios proveedores de IA, con gratis incluidos, para no
+              quedarte sin cupo del mes. Oruka solo lo instala, lo prende y lo apaga; los
+              proveedores se configuran en su propio panel web.
+            </p>
+            <RouterSection />
+          </section>
+        )}
         {section === 'apariencia' && (
           <Panel
             title="Apariencia"
@@ -109,6 +128,26 @@ export default function SettingsModule() {
         )}
       </div>
     </div>
+  )
+}
+
+function SoundToggle() {
+  const [enabled, setEnabled] = useState(false)
+
+  useEffect(() => {
+    void loadSoundSetting().then(setEnabled)
+  }, [])
+
+  const toggle = (checked: boolean) => {
+    setEnabled(checked)
+    void saveSoundSetting(checked)
+  }
+
+  return (
+    <label className="settings__sound-toggle">
+      <input type="checkbox" checked={enabled} onChange={(e) => toggle(e.target.checked)} />
+      <span>Sonido al terminar un agente</span>
+    </label>
   )
 }
 

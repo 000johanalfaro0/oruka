@@ -3,13 +3,21 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-use crate::mcp::safe_write;
+use crate::mcp::{safe_write, MissingRequirement, Requires};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Skill {
     pub id: String,
     pub description: String,
     pub content: String,
+    /// El programa que la skill le dice al agente que use, si necesita uno.
+    ///
+    /// Una skill es texto: se escribe siempre bien y nunca falla al instalar.
+    /// Si ese texto manda ejecutar algo que no esta en el equipo, el fallo
+    /// aparece mucho despues, en mitad de una tarea. Declararlo permite avisar
+    /// antes y ofrecer la instalacion, igual que hace el catalogo de MCP.
+    #[serde(default)]
+    pub requires: Option<Requires>,
 }
 
 #[derive(Debug, Serialize)]
@@ -27,27 +35,53 @@ fn home() -> PathBuf {
         .unwrap_or_default()
 }
 
+/// Lo que Browser Harness necesita en el PATH para que su skill sirva.
+///
+/// El paquete publica una CLI, no un servidor MCP. Por eso vive aqui y no en
+/// el catalogo de MCP: alli el cliente lo arrancaba, recibia su ayuda por
+/// salida y cerraba la conexion, y el usuario leia «servidor caido» de algo
+/// que funcionaba.
+fn browser_harness_requires() -> Requires {
+    Requires {
+        bin: "blop-browser".into(),
+        name: "Browser Harness (blop-browser)".into(),
+        winget: None,
+        brew: None,
+        npm: Some("@blopai/browser-harness".into()),
+        url: "https://github.com/blop-oss/blop-browser".into(),
+    }
+}
+
 pub fn catalog() -> Vec<Skill> {
     [
         (
             "design-loop",
             include_str!("../../packages/skills/design-loop/SKILL.md"),
+            None,
         ),
         (
             "design-dna",
             include_str!("../../packages/skills/design-dna/SKILL.md"),
+            Some(browser_harness_requires()),
         ),
         (
             "visual-assets",
             include_str!("../../packages/skills/visual-assets/SKILL.md"),
+            None,
         ),
         (
             "visual-reference-research",
             include_str!("../../packages/skills/visual-reference-research/SKILL.md"),
+            Some(browser_harness_requires()),
+        ),
+        (
+            "browser-harness",
+            include_str!("../../packages/skills/browser-harness/SKILL.md"),
+            Some(browser_harness_requires()),
         ),
     ]
     .into_iter()
-    .map(|(id, content)| Skill {
+    .map(|(id, content, requires)| Skill {
         id: id.into(),
         description: content
             .lines()
@@ -55,8 +89,29 @@ pub fn catalog() -> Vec<Skill> {
             .unwrap_or("")
             .into(),
         content: content.into(),
+        requires,
     })
     .collect()
+}
+
+/// Lo que le falta al catalogo de skills para funcionar en este equipo.
+pub fn missing() -> Vec<MissingRequirement> {
+    catalog()
+        .into_iter()
+        .filter_map(|s| crate::mcp::missing_for(&s.id, &s.requires))
+        .collect()
+}
+
+/// Instala el programa base que le falta a una skill.
+pub fn install_requirement(skill_id: &str) -> Result<String, String> {
+    let s = catalog()
+        .into_iter()
+        .find(|s| s.id == skill_id)
+        .ok_or_else(|| format!("no hay ninguna skill {skill_id}"))?;
+    let r = s
+        .requires
+        .ok_or_else(|| format!("{} no depende de nada que instalar", s.id))?;
+    crate::mcp::install_bin(&r)
 }
 
 fn target_root(cli_id: &str) -> Result<PathBuf, String> {
@@ -138,6 +193,34 @@ mod tests {
             assert!(skill.content.starts_with("---\nname: "));
             assert!(skill.content.contains(&format!("name: {}", skill.id)));
             assert!(!skill.description.is_empty());
+        }
+    }
+
+    #[test]
+    fn browser_harness_esta_aqui_y_no_en_mcp() {
+        // No habla MCP: publica una CLI. Su sitio es este, y el aviso de que
+        // falta el binario es lo unico que separa «instalada» de «sirve».
+        let s = catalog()
+            .into_iter()
+            .find(|s| s.id == "browser-harness")
+            .expect("browser-harness deberia estar en el catalogo de skills");
+        let r = s.requires.expect("sin binario declarado no se puede avisar");
+        assert_eq!(r.bin, "blop-browser");
+        assert!(r.npm.is_some(), "npm es como se instala en los tres sistemas");
+    }
+
+    #[test]
+    fn quien_manda_ejecutar_algo_lo_declara() {
+        // Una skill se escribe siempre bien; lo que falla es el programa que
+        // manda usar. Si el texto lo nombra, la ficha tiene que declararlo.
+        for skill in catalog() {
+            if skill.content.contains("blop-browser") {
+                assert!(
+                    skill.requires.is_some(),
+                    "{} usa blop-browser y no lo declara",
+                    skill.id
+                );
+            }
         }
     }
 }

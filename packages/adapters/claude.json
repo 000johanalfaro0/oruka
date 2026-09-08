@@ -54,5 +54,10 @@
       "-g",
       "@anthropic-ai/claude-code"
     ]
+  },
+  "browserExtension": {
+    "name": "Claude in Chrome",
+    "chromeExtensionId": "fcoeoabgfenejglbffodgkkbkcdhcgfn",
+    "chromeStoreUrl": "https://chromewebstore.google.com/detail/claude/fcoeoabgfenejglbffodgkkbkcdhcgfn"
   }
 }

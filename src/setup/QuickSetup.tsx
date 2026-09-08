@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { detectClis, installCli, type DetectedCli } from '@/lib/agents'
+import { detectClis, installCli, openExtensionStore, type DetectedCli } from '@/lib/agents'
 import { nodeInstall, nodeStatus, type NodeStatus } from '@/lib/node'
 import { GithubAccount } from '@/shared/GithubAccount'
 import { McpMatrix } from '@/shared/McpMatrix'
 import { RolesPanel } from '@/shared/RolesPanel'
+import { SkillsMatrix } from '@/shared/SkillsMatrix'
 import { storeGet, storeRemove, storeSet } from '@/lib/store'
 import './setup.css'
 
@@ -13,7 +14,13 @@ export async function isSetupDone(): Promise<boolean> {
   return (await storeGet(STORAGE_KEY)) === '1'
 }
 
-const STEPS = ['CLIs', 'GitHub', 'MCP', 'Roles', 'Listo'] as const
+/**
+ * Skills va detras de MCP y no dentro: son dos formas distintas de darle una
+ * capacidad a un agente. Un MCP es un servidor que el CLI arranca; una skill
+ * es texto que el CLI lee. Meter una CLI en la lista de MCP dejaba al usuario
+ * con un «servidor caido» permanente de algo que funcionaba.
+ */
+const STEPS = ['CLIs', 'GitHub', 'MCP', 'Skills', 'Roles', 'Listo'] as const
 
 /**
  * Quick Setup del primer arranque.
@@ -135,6 +142,7 @@ export function QuickSetup({ onDone }: { onDone: () => void }) {
                           can_resume: false,
                           role: null,
                           usage: null,
+                          browser_extension: null,
                           install: {
                             command: navigator.userAgent.includes('Mac') ? 'brew' : 'winget',
                             args: navigator.userAgent.includes('Mac')
@@ -170,6 +178,28 @@ export function QuickSetup({ onDone }: { onDone: () => void }) {
                       >
                         {instalando === c.id ? 'Instalando…' : c.found ? 'Actualizar' : 'Instalar'}
                       </button>
+                    )}
+                    {c.browser_extension && (
+                      <div className="setup__cli-extension">
+                        <i
+                          className={`codicon codicon-${c.browser_extension.installed ? 'pass-filled' : 'circle-large-outline'}`}
+                          aria-hidden="true"
+                        />
+                        <span>
+                          {c.browser_extension.name}
+                          {c.browser_extension.installed
+                            ? ` · instalada en ${c.browser_extension.installed_in}`
+                            : ' · no instalada'}
+                        </span>
+                        {!c.browser_extension.installed && (
+                          <button
+                            className="setup__install"
+                            onClick={() => void openExtensionStore(c.browser_extension!.chrome_store_url)}
+                          >
+                            Abrir tienda de Chrome
+                          </button>
+                        )}
+                      </div>
                     )}
                   </li>
                 ))}
@@ -241,6 +271,18 @@ export function QuickSetup({ onDone }: { onDone: () => void }) {
 
           {step === 3 && (
             <>
+              <h2 className="setup__title">Skills</h2>
+              <p className="setup__hint">
+                Una skill es un método escrito que el CLI lee cuando le toca, no un servidor.
+                Marca cuál va a qué CLI. Si alguna necesita un programa que no tienes, lo verás
+                aquí y podrás instalarlo desde el aviso.
+              </p>
+              <SkillsMatrix />
+            </>
+          )}
+
+          {step === 4 && (
+            <>
               <h2 className="setup__title">Roles de los agentes</h2>
               <p className="setup__hint">
                 Si dos agentes trabajan sobre los mismos archivos, hoy son dos desconocidos que se
@@ -251,7 +293,7 @@ export function QuickSetup({ onDone }: { onDone: () => void }) {
             </>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <>
               <h2 className="setup__title">Listo</h2>
               <p className="setup__hint">

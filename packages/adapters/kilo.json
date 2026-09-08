@@ -1,0 +1,41 @@
+{
+  "id": "kilo",
+  "name": "Kilo Code",
+  "icon": "terminal",
+  "detect": {
+    "bin": "kilo",
+    "versionArgs": [
+      "--version"
+    ]
+  },
+  "launch": {
+    "args": [],
+    "cwd": "process"
+  },
+  "modes": {
+    "default": [],
+    "yolo": [
+      "--yolo"
+    ],
+    "plan": [
+      "--plan"
+    ]
+  },
+  "resume": [
+    "--continue"
+  ],
+  "install": {
+    "command": "npm",
+    "args": [
+      "install",
+      "-g",
+      "@kilocode/cli"
+    ]
+  },
+  "browserExtension": {
+    "name": "Kilo Code",
+    "chromeExtensionId": "fpihhpdjnlhjpefblefklcegfmnmbmib",
+    "chromeStoreUrl": "https://chromewebstore.google.com/detail/kilo-code/fpihhpdjnlhjpefblefklcegfmnmbmib",
+    "firefoxUrl": "https://addons.mozilla.org/en-US/firefox/addon/kilo-code/"
+  }
+}

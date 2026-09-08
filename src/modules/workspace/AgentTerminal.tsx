@@ -10,6 +10,7 @@ import {
   onAgentExit,
   onAgentOutput,
 } from '@/lib/agents'
+import { readClipboard, writeClipboard } from '@/lib/clipboard'
 import { useContextMenu, type MenuItem } from '@/shared/ContextMenu'
 import '@xterm/xterm/css/xterm.css'
 
@@ -112,7 +113,7 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
           if (e.type === 'keydown') {
             const selection = term.getSelection()
             if (selection) {
-              void navigator.clipboard.writeText(selection)
+              void writeClipboard(selection)
             }
           }
           // Bloquear que xterm mande \x03 al proceso cuando solo se queria copiar texto
@@ -129,8 +130,7 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
 
       if (isPaste) {
         if (e.type === 'keydown') {
-          navigator.clipboard
-            .readText()
+          readClipboard()
             .then((text) => {
               if (text && alive) {
                 term.paste(text)
@@ -160,8 +160,7 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
       if (text) {
         term.paste(text)
       } else {
-        navigator.clipboard
-          .readText()
+        readClipboard()
           .then((clipText) => {
             if (clipText && alive) term.paste(clipText)
           })
@@ -175,8 +174,7 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
     const handleAuxClick = (e: MouseEvent) => {
       if (e.button === 1) {
         e.preventDefault()
-        navigator.clipboard
-          .readText()
+        readClipboard()
           .then((text) => {
             if (text && alive) term.paste(text)
           })
@@ -323,7 +321,7 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
         action: () => {
           const sel = term.getSelection()
           if (sel) {
-            void navigator.clipboard.writeText(sel)
+            void writeClipboard(sel)
           }
         },
       },
@@ -331,8 +329,7 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
         label: 'Pegar',
         icon: 'clippy',
         action: () => {
-          navigator.clipboard
-            .readText()
+          readClipboard()
             .then((text) => {
               if (text) term.paste(text)
             })

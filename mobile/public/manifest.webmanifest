@@ -1,0 +1,17 @@
+{
+  "name": "Oruka",
+  "short_name": "Oruka",
+  "description": "Mira tus agentes y escríbeles desde el móvil.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#101010",
+  "theme_color": "#101010",
+  "lang": "es",
+  "icons": [
+    { "src": "./icon-128.png", "sizes": "128x128", "type": "image/png" },
+    { "src": "./icon-284.png", "sizes": "284x284", "type": "image/png" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

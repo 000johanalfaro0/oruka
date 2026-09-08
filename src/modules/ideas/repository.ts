@@ -66,33 +66,100 @@ export async function listIdeas(projectId: string): Promise<Idea[]> {
   return (data ?? []) as Idea[]
 }
 
+function chunkText(text: string, maxLen = 250): string[] {
+  if (text.length <= maxLen) return [text]
+  const chunks: string[] = []
+  const sentences = text.match(/[^.!?\n]+[.!?\n]*/g) || [text]
+  let current = ''
+
+  for (const s of sentences) {
+    if ((current + s).length <= maxLen) {
+      current += s
+    } else {
+      if (current.trim()) chunks.push(current.trim())
+      if (s.length <= maxLen) {
+        current = s
+      } else {
+        const words = s.split(' ')
+        current = ''
+        for (const w of words) {
+          if ((current + ' ' + w).length <= maxLen) {
+            current = current ? current + ' ' + w : w
+          } else {
+            if (current.trim()) chunks.push(current.trim())
+            current = w
+          }
+        }
+      }
+    }
+  }
+  if (current.trim()) chunks.push(current.trim())
+  return chunks.length > 0 ? chunks : [text.slice(0, maxLen)]
+}
+
 export async function createIdea(
   projectId: string,
   content: string,
   extra?: { type?: Idea['type']; premium?: boolean; source_label?: string | null },
-): Promise<Idea> {
+): Promise<Idea[]> {
   const supabase = await getSupabase()
   const { data: auth } = await supabase.auth.getUser()
   const userId = auth.user?.id
   if (!userId) throw new Error('No hay sesión activa.')
 
-  const { data, error } = await supabase
-    .from('ideas')
-    .insert({
-      project_id: projectId,
-      user_id: userId,
-      content,
-      type: extra?.type ?? 'text',
-      premium: extra?.premium ?? false,
-      source_label: extra?.source_label ?? null,
-    })
-    .select()
-    .single()
-  if (error) throw new Error(error.message)
+  // 1. Intentar inserción completa
+  try {
+    const { data, error } = await supabase
+      .from('ideas')
+      .insert({
+        project_id: projectId,
+        user_id: userId,
+        content,
+        type: extra?.type ?? 'text',
+        premium: extra?.premium ?? false,
+        source_label: extra?.source_label ?? null,
+      })
+      .select()
+      .single()
 
-  // Que el proyecto suba en la lista al anadirle algo.
+    if (!error && data) {
+      await updateProject(projectId, {}).catch(() => {})
+      return [data as Idea]
+    }
+    if (error && !error.message.includes('ideas_content_check')) {
+      throw new Error(error.message)
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!msg.includes('ideas_content_check')) {
+      throw err
+    }
+  }
+
+  // 2. Si la base de datos restringe la longitud, dividir automáticamente en fragmentos coherentes
+  const chunks = chunkText(content, 250)
+  const results: Idea[] = []
+
+  for (const chunk of chunks) {
+    const { data, error } = await supabase
+      .from('ideas')
+      .insert({
+        project_id: projectId,
+        user_id: userId,
+        content: chunk,
+        type: extra?.type ?? 'text',
+        premium: extra?.premium ?? false,
+        source_label: extra?.source_label ?? null,
+      })
+      .select()
+      .single()
+
+    if (error) throw new Error(error.message)
+    results.push(data as Idea)
+  }
+
   await updateProject(projectId, {}).catch(() => {})
-  return data as Idea
+  return results
 }
 
 export async function deleteIdea(id: string): Promise<void> {

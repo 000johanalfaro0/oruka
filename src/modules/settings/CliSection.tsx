@@ -102,6 +102,7 @@ export function CliSection() {
                   can_resume: false,
                   role: null,
                   usage: null,
+                  browser_extension: null,
                   install: {
                     command: navigator.userAgent.includes('Mac') ? 'brew' : 'winget',
                     args: navigator.userAgent.includes('Mac')

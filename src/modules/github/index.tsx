@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { bus } from '@/shell/bus'
+import { writeClipboard } from '@/lib/clipboard'
 import {
   githubInvitations,
   githubOpenUrl,
@@ -44,8 +45,7 @@ export default function GithubModule() {
    * sabe si funciono, y la gente acaba pulsando tres veces.
    */
   const copiar = useCallback((text: string, label: string) => {
-    navigator.clipboard
-      .writeText(text)
+    writeClipboard(text)
       .then(() => setAviso(`Enlace de ${label} copiado`))
       .catch(() => setAviso('No se pudo copiar'))
   }, [])

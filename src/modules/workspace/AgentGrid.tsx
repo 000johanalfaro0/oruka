@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useContextMenu, type MenuItem } from '@/shared/ContextMenu'
 import { revealInExplorer } from '@/lib/agents'
+import { writeClipboard } from '@/lib/clipboard'
 import { AgentTerminal } from './AgentTerminal'
 import { MAX_AGENTS, useWorkspaceStore, type OpenProject } from './workspaceStore'
 
@@ -27,9 +28,11 @@ export function AgentGrid({ project }: { project: OpenProject }) {
   const addAgent = useWorkspaceStore((s) => s.addAgent)
   const removeAgent = useWorkspaceStore((s) => s.removeAgent)
   const [picking, setPicking] = useState(false)
-  /** Si el proximo agente retoma la conversacion en vez de empezar otra. */
   const [continuar, setContinuar] = useState(false)
   const { open: openMenu, menu } = useContextMenu()
+  const agents = project.agents
+  const full = agents.length >= MAX_AGENTS
+  const available = clis.filter((c) => c.found)
 
   const projectMenu = (): MenuItem[] => [
     {
@@ -46,18 +49,14 @@ export function AgentGrid({ project }: { project: OpenProject }) {
     },
     {},
     { label: 'Abrir en el explorador', icon: 'folder-opened', action: () => void revealInExplorer(project.path) },
-    { label: 'Copiar ruta', icon: 'copy', action: () => void navigator.clipboard.writeText(project.path) },
+    { label: 'Copiar ruta', icon: 'copy', action: () => void writeClipboard(project.path) },
   ]
 
   const agentMenu = (sessionId: string): MenuItem[] => [
     { label: 'Cerrar agente', icon: 'close', danger: true, action: () => void removeAgent(sessionId) },
     {},
-    { label: 'Copiar ruta del proyecto', icon: 'copy', action: () => void navigator.clipboard.writeText(project.path) },
+    { label: 'Copiar ruta del proyecto', icon: 'copy', action: () => void writeClipboard(project.path) },
   ]
-
-  const agents = project.agents
-  const full = agents.length >= MAX_AGENTS
-  const available = clis.filter((c) => c.found)
 
   return (
     <div className="grid-wrap" onContextMenu={(e) => openMenu(e, projectMenu())}>

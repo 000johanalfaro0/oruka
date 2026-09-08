@@ -1,5 +1,6 @@
 import { useContextMenu, type MenuItem } from '@/shared/ContextMenu'
 import { revealInExplorer } from '@/lib/agents'
+import { writeClipboard } from '@/lib/clipboard'
 import { MAX_AGENTS, useWorkspaceStore, type OpenProject } from './workspaceStore'
 import './workspace.css'
 
@@ -36,7 +37,7 @@ export default function WorkspaceTabs() {
       },
       {},
       { label: 'Abrir en el explorador', icon: 'folder-opened', action: () => void revealInExplorer(p.path) },
-      { label: 'Copiar ruta', icon: 'copy', action: () => void navigator.clipboard.writeText(p.path) },
+      { label: 'Copiar ruta', icon: 'copy', action: () => void writeClipboard(p.path) },
       {},
       { label: 'Cerrar', icon: 'close', danger: true, action: () => void close(p.path) },
       {

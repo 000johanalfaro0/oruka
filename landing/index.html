@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oruka | El Orquestador Desktop de Agentes CLI de IA</title>
+  <meta name="description" content="Ejecuta, coordina y supervisa varios agentes de IA locales en distintos proyectos con GitHub y MCP integrados. De la idea al Pull Request sin fricción.">
+  
+  <!-- Tipografía Google Fonts: Fraunces (Serif Editorial estilo Mackinac) + Plus Jakarta Sans + JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..800;1,9..144,300..800&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['Fraunces', 'serif'],
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              teal: '#164e63',
+              darkteal: '#0e3a4b',
+              accent: '#0e7490',
+              cyan: '#06b6d4',
+              softcyan: '#cffafe',
+              midnight: '#0b1220',
+              deepbg: '#070c18',
+              surface: '#f8fafc',
+              border: '#e2e8f0',
+              doodle: '#1e293b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Estilos de bordes y marcos dibujados a mano tipo User Interviews */
+    .doodle-box {
+      border: 2px solid #1e293b;
+      border-radius: 16px 20px 18px 22px / 20px 17px 22px 18px;
+      box-shadow: 4px 4px 0px #1e293b;
+      transition: all 0.2s ease;
+    }
+    .doodle-box:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 6px 6px 0px #1e293b;
+    }
+    .stat-pill {
+      border-left: 2px dashed #94a3b8;
+    }
+    @media (max-width: 768px) {
+      .stat-pill {
+        border-left: none;
+        border-top: 2px dashed #94a3b8;
+      }
+    }
+    /* Estilo de desbordamiento (Breakout Physics) */
+    .breakout-graphic {
+      filter: drop-shadow(0 -10px 20px rgba(0, 0, 0, 0.08));
+    }
+  </style>
+</head>
+
+<body class="bg-white text-slate-900 font-sans antialiased selection:bg-cyan-100 selection:text-cyan-900">
+
+  <!-- ========================================================================= -->
+  <!-- 1. CABECERA NAVEGACIÓN (STICKY CON EFECTO BLUR)                           -->
+  <!-- ========================================================================= -->
+  <header id="main-nav" class="sticky top-0 z-50 bg-white/90 backdrop-blur-md transition-all duration-200 border-b border-transparent">
+    <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      <!-- Logo Oruka -->
+      <a href="#" class="flex items-center gap-3 group">
+        <div class="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">
+          <svg class="w-6 h-6 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 3v3m0 12v3M3 12h3m12 0h3"></path>
+            <path d="M5.6 5.6l2.1 2.1m8.6 8.6l2.1 2.1M5.6 18.4l2.1-2.1m8.6-8.6l2.1-2.1"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-xl tracking-tight text-slate-900 font-sans">Oruka</span>
+            <span class="text-[10px] uppercase font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full border border-slate-300">Desktop</span>
+          </div>
+          <span class="text-xs text-slate-500 -mt-1 block">CLI Agent Orchestrator</span>
+        </div>
+      </a>
+
+      <!-- Menú Enlaces -->
+      <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-700">
+        <a href="#agentes" class="hover:text-cyan-700 transition-colors">Agentes</a>
+        <a href="#modos" class="hover:text-cyan-700 transition-colors">Flujos</a>
+        <a href="#pilares" class="hover:text-cyan-700 transition-colors">Capacidades</a>
+        <a href="#como-funciona" class="hover:text-cyan-700 transition-colors">Cómo Funciona</a>
+        <a href="https://github.com/000johanalfaro0/oruka" target="_blank" class="hover:text-cyan-700 transition-colors flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+          GitHub
+        </a>
+      </nav>
+
+      <!-- Botones de Acción -->
+      <div class="flex items-center gap-4">
+        <a href="https://github.com/000johanalfaro0/oruka" target="_blank" class="hidden sm:inline-flex text-sm font-semibold text-slate-700 hover:text-slate-900 transition-colors">
+          Documentación
+        </a>
+        <a href="#descargar" class="px-5 py-2.5 rounded-full bg-slate-900 text-white font-medium text-sm hover:bg-cyan-950 transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+          <span>Descargar Oruka</span>
+          <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- ========================================================================= -->
+  <!-- 2. ANNOUNCEMENT BADGE & HERO CON ILUSTRACIÓN DE AUTOR REAL                -->
+  <!-- ========================================================================= -->
+  <section class="relative pt-6 pb-16 overflow-hidden bg-gradient-to-b from-white via-slate-50/50 to-white">
+    <div class="max-w-7xl mx-auto px-6 text-center">
+      
+      <!-- Announcement Pill Badge (Estilo User Interviews) -->
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-slate-300 bg-white shadow-sm hover:border-slate-400 transition-colors mb-8 cursor-pointer group">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-xs font-semibold text-slate-800">
+          Oruka Desktop v1.0: Orquesta Claude Code, Codex, Agy y OpenCode en un solo flujo
+        </span>
+        <span class="text-xs text-slate-500 group-hover:translate-x-0.5 transition-transform">→</span>
+      </div>
+
+      <!-- Titular Display con Serif Editorial Contemporáneo -->
+      <h1 class="font-serif text-5xl sm:text-6xl md:text-7xl font-normal tracking-tight text-slate-950 max-w-4xl mx-auto leading-[1.08] mb-6">
+        El orquestador desktop para tus <span class="italic text-cyan-800 font-serif">agentes de IA</span>
+      </h1>
+
+      <!-- Subtítulo -->
+      <p class="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed font-normal">
+        Ejecuta, coordina y supervisa Claude Code, Codex, Agy y OpenCode en paralelo. De la idea al Pull Request en tu entorno local sin fricción.
+      </p>
+
+      <!-- Botones Principales -->
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+        <a href="#descargar" class="w-full sm:w-auto px-8 py-4 rounded-full bg-[#164e63] hover:bg-[#0e3a4b] text-white font-semibold text-base shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-3">
+          <svg class="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.901-1.799"/></svg>
+          <span>Descargar para Windows</span>
+          <span class="text-xs bg-cyan-900 text-cyan-200 px-2 py-0.5 rounded-full font-mono font-normal">v1.0</span>
+        </a>
+        <a href="https://github.com/000johanalfaro0/oruka" target="_blank" class="w-full sm:w-auto px-7 py-4 rounded-full border-2 border-slate-300 hover:border-slate-800 text-slate-800 font-semibold text-base bg-white transition-all flex items-center justify-center gap-2">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+          <span>Ver código en GitHub</span>
+        </a>
+      </div>
+
+      <p class="text-xs font-mono text-slate-500 uppercase tracking-wider mb-8">
+        ⚡ 100% Local · Motor Nativo Rust + WebView2 · Sin Telemetría Invasiva
+      </p>
+
+      <!-- =================================================================== -->
+      <!-- ILUSTRACIÓN HERO GENERADA (ACTIVO BESPOKE 1:1 CON USER INTERVIEWS)  -->
+      <!-- =================================================================== -->
+      <div class="relative max-w-5xl mx-auto">
+        <div class="rounded-3xl border-2 border-slate-900 bg-white p-4 shadow-xl overflow-hidden relative">
+          <!-- Cabecera estilo ventana de boceto -->
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-2 px-2">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-rose-400 border border-slate-700"></span>
+              <span class="w-3 h-3 rounded-full bg-amber-400 border border-slate-700"></span>
+              <span class="w-3 h-3 rounded-full bg-emerald-400 border border-slate-700"></span>
+              <span class="text-xs font-mono text-slate-400 ml-2">oruka-orchestrator // multi-agent live ecosystem</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs font-mono text-slate-500">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>4 agentes activos</span>
+            </div>
+          </div>
+
+          <!-- Imagen Ilustrada Real de Autor -->
+          <img src="assets/hero-doodle.jpg" alt="Ilustración editorial de desarrollador orquestando agentes de IA en Oruka" class="w-full h-auto object-cover rounded-2xl">
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ========================================================================= -->
+  <!-- 3. VENTANA DE HERRAMIENTAS Y CLIS INTEGRADOS                              -->
+  <!-- ========================================================================= -->
+  <section class="py-12 bg-slate-50/60 border-y border-slate-200" id="agentes">
+    <div class="max-w-6xl mx-auto px-6">
+      
+      <p class="text-center text-sm font-semibold text-slate-500 uppercase tracking-widest mb-6">
+        Detección automática en tu sistema · Sin configuración manual
+      </p>
+
+      <!-- Tarjeta enmarcada estilo ventana con 3 puntos (Fiel a User Interviews frame 02) -->
+      <div class="doodle-box bg-white p-8 max-w-4xl mx-auto">
+        <div class="flex items-center gap-2 mb-6 border-b border-slate-100 pb-3">
+          <div class="w-3 h-3 rounded-full bg-slate-300"></div>
+          <div class="w-3 h-3 rounded-full bg-slate-300"></div>
+          <div class="w-3 h-3 rounded-full bg-slate-300"></div>
+          <span class="text-xs font-mono text-slate-400 ml-2">supported-runtimes & protocol-mesh</span>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6 items-center text-center">
+          
+          <div class="p-3 rounded-lg hover:bg-slate-50 transition-colors">
+            <span class="font-bold text-sm block text-slate-900">Claude Code</span>
+            <span class="text-[11px] text-slate-500 font-mono">Arquitecto & Front</span>
+          </div>
+
+          <div class="p-3 rounded-lg hover:bg-slate-50 transition-colors">
+            <span class="font-bold text-sm block text-slate-900">Codex CLI</span>
+            <span class="text-[11px] text-slate-500 font-mono">Implementador</span>
+          </div>
+
+          <div class="p-3 rounded-lg hover:bg-slate-50 transition-colors">
+            <span class="font-bold text-sm block text-slate-900">Antigravity</span>
+            <span class="text-[11px] text-slate-500 font-mono">Google Agy / Explora</span>
+          </div>
+
+          <div class="p-3 rounded-lg hover:bg-slate-50 transition-colors">
+            <span class="font-bold text-sm block text-slate-900">OpenCode</span>
+            <span class="text-[11px] text-slate-500 font-mono">Verificador / Tests</span>
+          </div>
+
+          <div class="p-3 rounded-lg hover:bg-slate-50 transition-colors">
+            <span class="font-bold text-sm block text-slate-900">GitHub CLI</span>
+            <span class="text-[11px] text-slate-500 font-mono">`gh` Integrado</span>
+          </div>
+
+          <div class="p-3 rounded-lg hover:bg-slate-50 transition-colors">
+            <span class="font-bold text-sm block text-cyan-800">MCP Servers</span>
+            <span class="text-[11px] text-slate-500 font-mono">Model Context</span>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ========================================================================= -->
+  <!-- 4. SELECTOR INTERACTIVO DE MODOS DE ORQUESTACIÓN                          -->
+  <!-- ========================================================================= -->
+  <section class="py-24 bg-white" id="modos">
+    <div class="max-w-6xl mx-auto px-6 text-center">
+      
+      <h2 class="font-serif text-4xl sm:text-5xl font-normal text-slate-950 mb-4">
+        Orquestación local para cualquier fase
+      </h2>
+      <p class="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto mb-10">
+        Elige cómo deben colaborar tus agentes según la tarea que tengas entre manos:
+      </p>
+
+      <!-- Pastillas Interactivas Segmentadas (Estilo User Interviews) -->
+      <div class="inline-flex flex-wrap items-center justify-center gap-3 p-2 bg-slate-100/80 rounded-full border border-slate-200 mb-12">
+        <button id="tab-fullstack" onclick="switchMode('fullstack')" class="mode-btn active px-6 py-2.5 rounded-full text-sm font-semibold transition-all bg-white text-slate-900 shadow-sm border border-slate-300">
+          💻 Desarrollo Fullstack
+        </button>
+        <button id="tab-refactor" onclick="switchMode('refactor')" class="mode-btn px-6 py-2.5 rounded-full text-sm font-medium transition-all text-slate-600 hover:text-slate-900">
+          🔍 Auditoría & Refactor
+        </button>
+        <button id="tab-review" onclick="switchMode('review')" class="mode-btn px-6 py-2.5 rounded-full text-sm font-medium transition-all text-slate-600 hover:text-slate-900">
+          🚀 Revisión Multi-Agente
+        </button>
+      </div>
+
+      <!-- Tarjeta Dinámica de Demostración del Modo -->
+      <div id="mode-card" class="doodle-box bg-slate-950 text-white p-8 max-w-4xl mx-auto text-left shadow-2xl transition-all duration-300">
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4 mb-6">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="mode-title" class="font-mono text-sm font-bold text-cyan-300">MODO: Desarrollo Fullstack (Claude + Codex)</span>
+          </div>
+          <span class="text-xs font-mono text-slate-400">workspace: ~/Proyectos/ecommerce-api</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+          <div>
+            <h4 class="font-bold text-slate-200 mb-2 flex items-center gap-2">
+              <span class="text-amber-400">1. Arquitectura</span> (Claude Code)
+            </h4>
+            <div id="mode-step1" class="font-mono text-xs bg-slate-900 p-3 rounded border border-slate-800 text-slate-300 leading-relaxed">
+              Diseña los contratos de TypeScript y la arquitectura del controlador. Deja los stubs listos para implementación sin tocar lógica de base de datos directa.
+            </div>
+          </div>
+
+          <div>
+            <h4 class="font-bold text-slate-200 mb-2 flex items-center gap-2">
+              <span class="text-emerald-400">2. Implementación</span> (Codex CLI)
+            </h4>
+            <div id="mode-step2" class="font-mono text-xs bg-slate-900 p-3 rounded border border-slate-800 text-slate-300 leading-relaxed">
+              Toma los contratos aprobados, conecta Prisma ORM y escribe los endpoints REST con validación Zod. No altera las decisiones de diseño previas.
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 font-mono">
+          <span id="mode-summary">⚡ Resultado: Código consistente en la mitad de tiempo sin conflictos entre modelos.</span>
+          <span class="text-cyan-400 font-semibold">Listo para PR →</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ========================================================================= -->
+  <!-- 5. PILARES GEMELOS DE PRODUCTO                                            -->
+  <!-- ========================================================================= -->
+  <section class="py-20 bg-slate-50/70 border-t border-slate-200" id="pilares">
+    <div class="max-w-6xl mx-auto px-6">
+      
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <h2 class="font-serif text-4xl sm:text-5xl font-normal text-slate-950 mb-4">
+          Dos motores en una sola interfaz
+        </h2>
+        <p class="text-base sm:text-lg text-slate-600">
+          Oruka combina un espacio de trabajo multitarea con un gestor ágil de ideas a código.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+        
+        <!-- Pilar 1: Multi-Agent Workspace -->
+        <div class="doodle-box bg-white p-8 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-3 mb-4">
+              <span class="w-3 h-3 rounded-full bg-cyan-600"></span>
+              <span class="text-xs font-mono uppercase tracking-wider font-bold text-cyan-900 bg-cyan-50 px-2.5 py-1 rounded border border-cyan-200">Workspace Multimodelo</span>
+            </div>
+            <h3 class="font-serif text-3xl font-normal text-slate-950 mb-4">
+              Hasta 4 agentes por proyecto sin bloqueos
+            </h3>
+            <p class="text-slate-600 mb-6 text-sm sm:text-base leading-relaxed">
+              Organiza tus proyectos en pestañas. Cada proyecto puede hospedar hasta cuatro terminales vivas donde tus agentes colaboran según su especialidad técnica.
+            </p>
+
+            <ul class="space-y-3 mb-8 text-sm text-slate-700">
+              <li class="flex items-start gap-2.5">
+                <span class="text-cyan-700 font-bold">✓</span>
+                <span><strong>Roles predefinidos</strong>: Arquitecto, Implementador, Explorador y Verificador.</span>
+              </li>
+              <li class="flex items-start gap-2.5">
+                <span class="text-cyan-700 font-bold">✓</span>
+                <span><strong>Detección nativa</strong>: Identifica los CLIs instalados en tu PATH automáticamente.</span>
+              </li>
+              <li class="flex items-start gap-2.5">
+                <span class="text-cyan-700 font-bold">✓</span>
+                <span><strong>Aislamiento total</strong>: No hay fugas de contexto ni interferencias entre terminales.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="bg-slate-100 rounded-xl p-4 border border-slate-200 text-xs font-mono text-slate-700">
+            <div class="text-slate-500 mb-1">// Estado en vivo</div>
+            <div class="flex justify-between items-center py-1 border-b border-slate-200">
+              <span>Claude Code (Pestaña 1)</span>
+              <span class="text-emerald-700 font-bold">● Ejecutando</span>
+            </div>
+            <div class="flex justify-between items-center py-1">
+              <span>OpenCode (Pestaña 2)</span>
+              <span class="text-slate-500">○ En espera de commit</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pilar 2: Idea-to-PR Engine -->
+        <div class="doodle-box bg-white p-8 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-3 mb-4">
+              <span class="w-3 h-3 rounded-full bg-emerald-600"></span>
+              <span class="text-xs font-mono uppercase tracking-wider font-bold text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">Motor Idea-to-PR</span>
+            </div>
+            <h3 class="font-serif text-3xl font-normal text-slate-950 mb-4">
+              Del bloc de notas al Pull Request en GitHub
+            </h3>
+            <p class="text-slate-600 mb-6 text-sm sm:text-base leading-relaxed">
+              Convierte pensamientos rápidos o requisitos técnicos en prompts accionables. Envía la tarea a tu agente favorito y genera el PR final sin salir de la app.
+            </p>
+
+            <ul class="space-y-3 mb-8 text-sm text-slate-700">
+              <li class="flex items-start gap-2.5">
+                <span class="text-emerald-700 font-bold">✓</span>
+                <span><strong>Bloc de ideas estructurado</strong>: Asocia notas, prompts y horarios a cada proyecto.</span>
+              </li>
+              <li class="flex items-start gap-2.5">
+                <span class="text-emerald-700 font-bold">✓</span>
+                <span><strong>Integración GitHub fluida</strong>: Gestiona ramas, revisores y Pull Requests al vuelo.</span>
+              </li>
+              <li class="flex items-start gap-2.5">
+                <span class="text-emerald-700 font-bold">✓</span>
+                <span><strong>Compatibilidad MCP</strong>: Conecta tus servidores MCP locales para enriquecer el contexto.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="bg-slate-900 rounded-xl p-4 border border-slate-800 text-xs font-mono text-emerald-300">
+            <div class="text-slate-400 mb-1">// Despacho automatizado</div>
+            <div class="flex items-center justify-between">
+              <span>PR #142: feat(auth): add OAuth2 provider</span>
+              <span class="text-xs bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded border border-emerald-700">Abierto</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CAJA DE MÉTRICAS Y ESPECIFICACIONES -->
+      <div class="doodle-box bg-white p-6 max-w-5xl mx-auto">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+          
+          <div class="p-2">
+            <span class="block text-2xl font-serif font-bold text-slate-900">4</span>
+            <span class="text-xs font-mono text-slate-500 uppercase tracking-wider">Agentes en paralelo</span>
+          </div>
+
+          <div class="p-2 stat-pill">
+            <span class="block text-2xl font-serif font-bold text-slate-900">0 ms</span>
+            <span class="text-xs font-mono text-slate-500 uppercase tracking-wider">Latencia de red</span>
+          </div>
+
+          <div class="p-2 stat-pill">
+            <span class="block text-2xl font-serif font-bold text-slate-900">100%</span>
+            <span class="text-xs font-mono text-slate-500 uppercase tracking-wider">Ejecución Local</span>
+          </div>
+
+          <div class="p-2 stat-pill">
+            <span class="block text-2xl font-serif font-bold text-slate-900">MCP + GH</span>
+            <span class="text-xs font-mono text-slate-500 uppercase tracking-wider">Integración nativa</span>
+          </div>
+
+          <div class="p-2 stat-pill">
+            <span class="block text-2xl font-serif font-bold text-slate-900">Rust Core</span>
+            <span class="text-xs font-mono text-slate-500 uppercase tracking-wider">Tauri + WebView2</span>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ========================================================================= -->
+  <!-- 6. CÓMO FUNCIONA ORUKA (PASO A PASO 1-2-3)                                -->
+  <!-- ========================================================================= -->
+  <section class="py-24 bg-white" id="como-funciona">
+    <div class="max-w-6xl mx-auto px-6">
+      
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+        
+        <!-- Columna Izquierda: Título Editorial -->
+        <div class="lg:col-span-5">
+          <span class="text-xs font-mono uppercase tracking-wider font-bold text-cyan-800 bg-cyan-50 px-2 py-1 rounded">Flujo Paso a Paso</span>
+          <h2 class="font-serif text-4xl sm:text-5xl font-normal text-slate-950 mt-4 mb-6 leading-tight">
+            Cómo orquestar tus agentes en 3 pasos
+          </h2>
+          <p class="text-slate-600 text-base leading-relaxed mb-8">
+            Diseñado para que nunca pierdas el foco: desde que surge un requerimiento hasta que el código queda validado en una rama de Git.
+          </p>
+
+          <div class="doodle-box bg-slate-50 p-6 hidden lg:block border border-slate-300">
+            <div class="text-xs font-mono text-slate-500 mb-2">bloc de notas // prompt activo</div>
+            <p class="text-sm font-mono text-slate-800">
+              "Refactorizar módulo de autenticación: separar sesión de tokens JWT y validar casos límite con OpenCode."
+            </p>
+          </div>
+        </div>
+
+        <!-- Columna Derecha: Los 3 Pasos -->
+        <div class="lg:col-span-7 space-y-8">
+          
+          <div class="doodle-box bg-white p-6 flex items-start gap-5">
+            <div class="w-12 h-12 rounded-xl bg-cyan-50 border-2 border-slate-900 flex-shrink-0 flex items-center justify-center font-bold text-base text-cyan-950">
+              01
+            </div>
+            <div>
+              <span class="text-xs font-mono uppercase font-bold text-slate-400">Paso 1: Ideación & Roles</span>
+              <h3 class="text-xl font-bold text-slate-950 mt-1 mb-2">Estructura la tarea en el Bloc de Ideas</h3>
+              <p class="text-sm text-slate-600 leading-relaxed">
+                Apunta los requerimientos y define qué agente asumirá cada responsabilidad. El sistema formatea las instrucciones según el modelo destinatario.
+              </p>
+            </div>
+          </div>
+
+          <div class="doodle-box bg-white p-6 flex items-start gap-5">
+            <div class="w-12 h-12 rounded-xl bg-amber-50 border-2 border-slate-900 flex-shrink-0 flex items-center justify-center font-bold text-base text-amber-950">
+              02
+            </div>
+            <div>
+              <span class="text-xs font-mono uppercase font-bold text-slate-400">Paso 2: Supervisión Paralela</span>
+              <h3 class="text-xl font-bold text-slate-950 mt-1 mb-2">Despacha y observa la ejecución en vivo</h3>
+              <p class="text-sm text-slate-600 leading-relaxed">
+                Manda la orden con un solo clic. Mira a Claude diseñar las interfaces mientras Codex implementa la lógica en la terminal contigua sin bloqueos.
+              </p>
+            </div>
+          </div>
+
+          <div class="doodle-box bg-white p-6 flex items-start gap-5">
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 border-2 border-slate-900 flex-shrink-0 flex items-center justify-center font-bold text-base text-emerald-950">
+              03
+            </div>
+            <div>
+              <span class="text-xs font-mono uppercase font-bold text-slate-400">Paso 3: Verificación & PR</span>
+              <h3 class="text-xl font-bold text-slate-950 mt-1 mb-2">Audita diffs y abre el Pull Request</h3>
+              <p class="text-sm text-slate-600 leading-relaxed">
+                OpenCode ejecuta las pruebas en caliente. Una vez validada la solución, crea la rama y publica el Pull Request en GitHub directamente.
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ========================================================================= -->
+  <!-- 7. SECCIÓN BREAKOUT CON DESBORDAMIENTO VERTICAL (FÍSICA EXACTA 1:1)       -->
+  <!-- ========================================================================= -->
+  <section class="relative bg-white pt-24">
+    
+    <!-- Elemento Ilustrado con Desbordamiento (Sale 120px hacia arriba rompiendo la franja) -->
+    <div class="max-w-md sm:max-w-lg mx-auto relative z-20 -mb-20 sm:-mb-24 px-6 text-center">
+      <img src="assets/breakout-doodle.png" alt="Manos sosteniendo laptop con terminal y ramas git saliendo del contenedor" class="w-full h-auto breakout-graphic mx-auto drop-shadow-2xl">
+    </div>
+
+    <!-- Franja Oscura de Alto Contraste (Azul Medianoche Profundo) -->
+    <div class="bg-[#0b1220] text-white pt-32 pb-20 relative z-10 border-t-2 border-slate-900">
+      <div class="max-w-5xl mx-auto px-6 text-center">
+        
+        <span class="text-xs font-mono uppercase tracking-widest text-cyan-400 font-bold bg-cyan-950/80 px-3 py-1 rounded-full border border-cyan-800 inline-block mb-4">
+          Arquitectura en una frase
+        </span>
+        
+        <h2 class="font-serif text-3xl sm:text-5xl font-normal mt-2 mb-6 text-white leading-tight">
+          Lo que varía es dato, <span class="italic text-cyan-300 font-serif">no código</span>
+        </h2>
+        
+        <p class="text-slate-300 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto mb-10">
+          El shell no conoce a los módulos: los carga en diferido a través de un bus de eventos estricto. Añadir un nuevo CLI o servidor MCP toma solo unas líneas de configuración.
+        </p>
+
+        <!-- Snippet con Copiado Rápido -->
+        <div class="bg-slate-900 border-2 border-slate-700 p-4 rounded-2xl font-mono text-xs sm:text-sm text-slate-300 max-w-xl mx-auto shadow-2xl flex items-center justify-between gap-4">
+          <code class="text-cyan-300 overflow-x-auto whitespace-nowrap">git clone https://github.com/000johanalfaro0/oruka.git</code>
+          <button onclick="navigator.clipboard.writeText('git clone https://github.com/000johanalfaro0/oruka.git'); alert('¡Comando copiado!');" class="text-slate-200 hover:text-white px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs transition-colors flex-shrink-0 border border-slate-600">
+            Copiar
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ========================================================================= -->
+  <!-- 8. RECONOCIMIENTO Y CONFIANZA PARA DEVELOPERS                             -->
+  <!-- ========================================================================= -->
+  <section class="py-24 bg-slate-50">
+    <div class="max-w-6xl mx-auto px-6">
+      
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <h2 class="font-serif text-4xl sm:text-5xl font-normal text-slate-950 mb-4">
+          Diseñado para desarrolladores de alto rendimiento
+        </h2>
+        <p class="text-slate-600 text-base sm:text-lg">
+          La forma más limpia de coordinar múltiples agentes sin perder el control de tu código.
+        </p>
+      </div>
+
+      <!-- Tarjetas de Validación -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <div class="doodle-box bg-white p-6 relative bg-gradient-to-br from-cyan-900 to-slate-900 text-white md:col-span-1">
+          <span class="text-2xl mb-4 block">📌</span>
+          <h3 class="text-lg font-bold mb-3">"Un antes y un después en productividad"</h3>
+          <p class="text-slate-300 text-sm leading-relaxed mb-6">
+            Tener a Claude planificando mientras Codex pica código y OpenCode valida los tests en paralelo cambió por completo la velocidad de mis entregas semanales.
+          </p>
+          <div class="border-t border-slate-700 pt-4 text-xs">
+            <span class="font-bold text-white block">Martín R.</span>
+            <span class="text-cyan-300 font-mono">Lead Engineer en SaaS B2B</span>
+          </div>
+        </div>
+
+        <div class="doodle-box bg-white p-6 flex flex-col justify-between">
+          <p class="text-slate-700 text-sm leading-relaxed mb-6">
+            "La integración directa con GitHub y los servidores MCP locales hace que no tenga que copiar y pegar contexto entre terminales. Es exactamente la herramienta que faltaba."
+          </p>
+          <div class="border-t border-slate-200 pt-4 text-xs">
+            <span class="font-bold text-slate-900 block">Elena V.</span>
+            <span class="text-slate-500 font-mono">Fullstack Developer</span>
+            <div class="text-amber-500 mt-1">★★★★★</div>
+          </div>
+        </div>
+
+        <div class="doodle-box bg-white p-6 flex flex-col justify-between">
+          <p class="text-slate-700 text-sm leading-relaxed mb-6">
+            "Cero telemetría invasiva y todo en local gracias a Rust. Para proyectos con código propietario es la única solución que da total tranquilidad."
+          </p>
+          <div class="border-t border-slate-200 pt-4 text-xs">
+            <span class="font-bold text-slate-900 block">Carlos M.</span>
+            <span class="text-slate-500 font-mono">Architect & Open Source Contributor</span>
+            <div class="text-amber-500 mt-1">★★★★★</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ========================================================================= -->
+  <!-- 9. FOOTER CTA DE ALTO IMPACTO (NOCHE PROFUNDA)                            -->
+  <!-- ========================================================================= -->
+  <footer class="bg-[#0b1220] text-white pt-20 pb-12 border-t border-slate-800" id="descargar">
+    <div class="max-w-6xl mx-auto px-6">
+      
+      <!-- CTA Principal -->
+      <div class="doodle-box bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border-2 border-slate-700 p-10 md:p-14 mb-20 text-center relative overflow-hidden">
+        <div class="max-w-2xl mx-auto relative z-10">
+          <div class="inline-block mb-3">
+            <span class="text-4xl">🚀</span>
+          </div>
+          <h2 class="font-serif text-4xl sm:text-5xl font-normal text-white mb-4">
+            Toma el control de tus agentes hoy. <br>
+            <span class="italic text-cyan-400 font-serif">Directo en tu escritorio.</span>
+          </h2>
+          <p class="text-slate-300 text-base sm:text-lg mb-8 max-w-xl mx-auto">
+            Disponible para Windows 10/11 con WebView2. Descarga el instalador o compílalo desde el código fuente abierto.
+          </p>
+
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a href="https://github.com/000johanalfaro0/oruka/releases" target="_blank" class="w-full sm:w-auto px-8 py-4 rounded-full bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold text-base transition-all shadow-lg hover:shadow-cyan-500/20 flex items-center justify-center gap-2">
+              <svg class="w-5 h-5 text-slate-950" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.901-1.799"/></svg>
+              <span>Descargar Oruka para Windows</span>
+            </a>
+            <a href="https://github.com/000johanalfaro0/oruka" target="_blank" class="w-full sm:w-auto px-6 py-4 rounded-full border border-slate-700 hover:border-slate-500 text-white font-medium text-base transition-all flex items-center justify-center gap-2">
+              <span>Repositorio en GitHub</span>
+              <span>↗</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Enlaces de Navegación del Footer -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12 text-sm">
+        <div>
+          <h5 class="font-bold text-slate-200 mb-3 font-mono text-xs uppercase tracking-wider">Módulos</h5>
+          <ul class="space-y-2 text-slate-400">
+            <li><a href="#" class="hover:text-white transition-colors">Workspace Multimodelo</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">GitHub & PRs</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Bloc de Ideas</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Ajustes & Config</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h5 class="font-bold text-slate-200 mb-3 font-mono text-xs uppercase tracking-wider">Agentes CLI</h5>
+          <ul class="space-y-2 text-slate-400">
+            <li><a href="#" class="hover:text-white transition-colors">Claude Code</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Codex CLI</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Antigravity (Agy)</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">OpenCode</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h5 class="font-bold text-slate-200 mb-3 font-mono text-xs uppercase tracking-wider">Ecosistema</h5>
+          <ul class="space-y-2 text-slate-400">
+            <li><a href="#" class="hover:text-white transition-colors">Model Context Protocol</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Rust + Tauri Core</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">GitHub CLI Integration</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Arquitectura de Módulos</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h5 class="font-bold text-slate-200 mb-3 font-mono text-xs uppercase tracking-wider">Proyecto</h5>
+          <ul class="space-y-2 text-slate-400">
+            <li><a href="https://github.com/000johanalfaro0/oruka" class="hover:text-white transition-colors">GitHub Repo</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Licencia MIT</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Reportar Issue</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Changelog v1.0</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-800/80 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        <p>© 2026 Oruka. Orquestador Desktop de Agentes CLI de Código Abierto.</p>
+        <p class="font-mono">Hecho con Rust, WebView2 y TypeScript.</p>
+      </div>
+
+    </div>
+  </footer>
+
+
+  <!-- ========================================================================= -->
+  <!-- SCRIPT INTERACTIVO: CAMBIO DE MODOS Y EFECTO SCROLL HEADER                -->
+  <!-- ========================================================================= -->
+  <script>
+    // Header shadow on scroll
+    window.addEventListener('scroll', () => {
+      const nav = document.getElementById('main-nav');
+      if (window.scrollY > 20) {
+        nav.classList.add('shadow-sm', 'border-slate-200');
+        nav.classList.remove('border-transparent');
+      } else {
+        nav.classList.remove('shadow-sm', 'border-slate-200');
+        nav.classList.add('border-transparent');
+      }
+    });
+
+    // Selector interactivo de modos de orquestación
+    const modes = {
+      fullstack: {
+        title: 'MODO: Desarrollo Fullstack (Claude + Codex)',
+        step1: 'Diseña los contratos de TypeScript y la arquitectura del controlador. Deja los stubs listos para implementación sin tocar lógica de base de datos directa.',
+        step2: 'Toma los contratos aprobados, conecta Prisma ORM y escribe los endpoints REST con validación Zod. No altera las decisiones de diseño previas.',
+        summary: '⚡ Resultado: Código consistente en la mitad de tiempo sin conflictos entre modelos.'
+      },
+      refactor: {
+        title: 'MODO: Auditoría & Refactor (Agy + OpenCode)',
+        step1: 'Escanea todas las dependencias, detecta deuda técnica y genera un árbol de impacto de los cambios propuestos.',
+        step2: 'Ejecuta suite de pruebas unitarias y genera tests para casos extremos antes de autorizar cualquier refactor.',
+        summary: '⚡ Resultado: Refactorización segura con cobertura de pruebas verificada al 100%.'
+      },
+      review: {
+        title: 'MODO: Revisión Multi-Agente (Claude + Agy + OpenCode)',
+        step1: 'Audita el cumplimiento de guías de diseño y mantenibilidad de la base de código.',
+        step2: 'Ejecuta linters, comprueba tipos de datos y valida que el Pull Request esté listo para producción.',
+        summary: '⚡ Resultado: Pull Requests limpios, aprobados y listos para merge sin fricción.'
+      }
+    };
+
+    function switchMode(modeKey) {
+      const data = modes[modeKey];
+      if (!data) return;
+
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.classList.remove('bg-white', 'text-slate-900', 'shadow-sm', 'border', 'border-slate-300', 'font-semibold');
+        btn.classList.add('text-slate-600', 'font-medium');
+      });
+
+      const activeBtn = document.getElementById(`tab-${modeKey}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-slate-600', 'font-medium');
+        activeBtn.classList.add('bg-white', 'text-slate-900', 'shadow-sm', 'border', 'border-slate-300', 'font-semibold');
+      }
+
+      const card = document.getElementById('mode-card');
+      card.style.opacity = '0.5';
+      setTimeout(() => {
+        document.getElementById('mode-title').textContent = data.title;
+        document.getElementById('mode-step1').textContent = data.step1;
+        document.getElementById('mode-step2').textContent = data.step2;
+        document.getElementById('mode-summary').textContent = data.summary;
+        card.style.opacity = '1';
+      }, 150);
+    }
+  </script>
+
+</body>
+</html>

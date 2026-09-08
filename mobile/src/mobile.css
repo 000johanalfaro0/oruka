@@ -1,0 +1,416 @@
+/* Estilos de la web del telefono.
+ *
+ * Ningun color se escribe aqui: todos salen de `src/ui/tokens.css`, la misma
+ * paleta del escritorio. Lo unico propio de este archivo es el tamano: dedos en
+ * vez de raton, una columna en vez de cuatro paneles.
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg-editor);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  /* El rebote de iOS al final de la lista descoloca la barra de abajo. */
+  overscroll-behavior: none;
+}
+
+button,
+input,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* --------------------------------------------------------------------- */
+/* Armazon                                                                */
+/* --------------------------------------------------------------------- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.splash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  color: var(--fg-dim);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  padding-top: calc(12px + env(safe-area-inset-top));
+  background: var(--bg-chrome);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar__title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+.topbar__sub {
+  color: var(--fg-dim);
+  font-size: var(--fs-xs);
+}
+
+/* Volver. Cuadrado grande a proposito: es lo que mas se pulsa. */
+.topbar__back {
+  width: 40px;
+  height: 40px;
+  margin-left: -8px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.topbar__back:active {
+  background: var(--hover);
+}
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px;
+}
+
+.tabs {
+  display: flex;
+  background: var(--bg-chrome);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tab {
+  flex: 1;
+  padding: 14px 8px;
+  border: none;
+  background: transparent;
+  color: var(--fg-dim);
+  cursor: pointer;
+}
+
+.tab--on {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------- */
+/* Listas                                                                 */
+/* --------------------------------------------------------------------- */
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card__name {
+  font-weight: 600;
+}
+
+.card__meta {
+  margin-left: auto;
+  color: var(--fg-dim);
+  font-size: var(--fs-xs);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--state-idle);
+}
+
+.dot--online {
+  background: var(--state-done);
+}
+
+.dot--trabajando {
+  background: var(--state-waiting);
+}
+
+.dot--esperando {
+  background: var(--state-done);
+}
+
+.dot--terminado {
+  background: var(--state-idle);
+}
+
+.group {
+  padding: 10px 14px 4px;
+  color: var(--fg-dim);
+  font-size: var(--fs-xs);
+}
+
+/* Fila pulsable. 52px de alto: por debajo de eso se falla al tocar. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 14px;
+  border: none;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.row:active {
+  background: var(--hover);
+}
+
+.row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.row__title {
+  font-weight: 500;
+}
+
+.row__hint {
+  color: var(--fg-dim);
+  font-size: var(--fs-xs);
+}
+
+.row__chevron {
+  margin-left: auto;
+  color: var(--fg-dim);
+}
+
+.empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--fg-dim);
+  line-height: 1.6;
+}
+
+.error {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--state-error);
+  border-radius: var(--radius);
+  color: var(--state-error);
+  font-size: var(--fs-xs);
+}
+
+/* --------------------------------------------------------------------- */
+/* Entrar                                                                 */
+/* --------------------------------------------------------------------- */
+
+.login {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 24px;
+  gap: 14px;
+}
+
+.login__brand {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 600;
+}
+
+.login__hint {
+  margin: 0;
+  color: var(--fg-dim);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field span {
+  color: var(--fg-muted);
+  font-size: var(--fs-xs);
+}
+
+.field input {
+  padding: 13px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--fg);
+}
+
+.field input:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: -1px;
+}
+
+.primary {
+  padding: 14px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary:disabled {
+  opacity: 0.6;
+}
+
+/* La otra forma de hacer lo mismo. Se ve, pero no compite con el boton azul. */
+.secundario {
+  padding: 12px;
+  border: none;
+  background: transparent;
+  color: var(--fg-dim);
+  cursor: pointer;
+}
+
+/* La camara al escanear. Cuadrada y con el borde marcado: hay que saber
+ * exactamente donde apuntar, y a pantalla completa se pierde la referencia. */
+.camara {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg-input);
+}
+
+/* --------------------------------------------------------------------- */
+/* Chat con un agente                                                     */
+/* --------------------------------------------------------------------- */
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+/* Texto plano, no una terminal. Los escapes ya se quitaron en el PC. */
+.chat__log {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0;
+  padding: 12px 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--fg-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chat__keys {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px 0;
+}
+
+.key {
+  padding: 7px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.key:active {
+  background: var(--hover);
+}
+
+.composer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  background: var(--bg-chrome);
+  border-top: 1px solid var(--border);
+}
+
+.composer textarea {
+  flex: 1;
+  min-height: 44px;
+  max-height: 120px;
+  padding: 11px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--fg);
+  resize: none;
+}
+
+.composer button {
+  flex: 0 0 auto;
+  padding: 0 18px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.composer button:disabled {
+  opacity: 0.5;
+}
+
+/* --------------------------------------------------------------------- */
+/* Ideas                                                                  */
+/* --------------------------------------------------------------------- */
+
+.idea {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.idea__date {
+  display: block;
+  margin-top: 4px;
+  color: var(--fg-dim);
+  font-size: var(--fs-xs);
+}

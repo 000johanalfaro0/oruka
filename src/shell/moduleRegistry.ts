@@ -42,6 +42,18 @@ const modules: OrukaModule[] = [
     enabled: () => import.meta.env.VITE_ORUKA_IDEAS !== 'off',
   },
   {
+    id: 'mobile',
+    label: 'Móvil',
+    icon: 'device-mobile',
+    view: lazy(() => import('@/modules/mobile')),
+  },
+  {
+    id: 'sessions',
+    label: 'Sesiones',
+    icon: 'history',
+    view: lazy(() => import('@/modules/sessions')),
+  },
+  {
     id: 'settings',
     label: 'Ajustes',
     icon: 'settings-gear',

@@ -3,6 +3,7 @@ import { bus } from '@/shell/bus'
 import { baseName } from '@/lib/paths'
 import {
   agentKill,
+  agentScrollback,
   detectClis,
   listProjects,
   onAgentExit,
@@ -13,6 +14,10 @@ import {
 } from '@/lib/agents'
 import { storeGet, storeSet } from '@/lib/store'
 import { syncProject } from '@/lib/roles'
+import { playFinishedSound } from '@/lib/notifications'
+import { recordPreview, toPreview, touchSession } from '@/lib/sessions'
+import type { RemoteSnapshot } from '@/lib/relay'
+import { apagar, encender, estabaActivo, type BridgePort } from './remoteBridge'
 
 /** Regla estructural: como mucho 4 agentes por proyecto. */
 export const MAX_AGENTS = 4
@@ -77,6 +82,19 @@ const terminadas = new Set<string>()
 /** Cuanto callar para dejar de considerarse «trabajando». */
 const SILENCIO_MS = 1200
 
+/**
+ * Desde cuando lleva "trabajando" cada sesion, sin cortes.
+ *
+ * Hace falta para el sonido de aviso: cambiar de pestana redimensiona la
+ * terminal, y muchos CLIs repintan su pantalla entera al recibir ese cambio
+ * de tamano -un parpadeo de salida que por si solo ya cuenta como
+ * "trabajando" un instante. Sin este control, ese parpadeo se leia como un
+ * "termino de trabajar" y sonaba con cada cambio de pestana.
+ */
+const trabajandoDesde = new Map<string, number>()
+/** Por debajo de esto, un tramo de "trabajando" es ruido, no una tarea real. */
+const MIN_TRABAJO_MS = 4000
+
 /** Empieza a escuchar el gasto de una sesion y lo guarda bajo su CLI. */
 function escuchar(sessionId: string, cliId: string, set: (g: (p: Gasto) => Gasto) => void) {
   if (escuchas.has(sessionId)) return
@@ -106,6 +124,18 @@ function dejar(sessionId: string) {
   escuchas.delete(sessionId)
   ultimaSalida.delete(sessionId)
   terminadas.delete(sessionId)
+  trabajandoDesde.delete(sessionId)
+}
+
+/**
+ * Guarda el ultimo texto visible de una sesion antes de matarla.
+ *
+ * Es lo unico que le queda al panel de Sesiones despues de cerrar: el proceso
+ * no sobrevive al cierre, esto si.
+ */
+async function guardarVistaPrevia(sessionId: string) {
+  const foto = await agentScrollback(sessionId).catch(() => null)
+  if (foto?.data) await recordPreview(sessionId, toPreview(foto.data))
 }
 
 interface WorkspaceState {
@@ -137,6 +167,19 @@ interface WorkspaceState {
     resume?: boolean,
   ) => void
   removeAgent: (sessionId: string) => Promise<void>
+
+  /**
+   * El mando a distancia desde el movil.
+   *
+   * Viene apagado y se queda como lo dejaste. Encendido, cualquiera con tu
+   * cuenta puede escribir en estos agentes desde un telefono, asi que la
+   * interfaz tiene que enseñarlo mientras lo este.
+   */
+  remoteEnabled: boolean
+  remoteError: string | null
+  /** El id de este equipo en la nube. Null mientras el mando este apagado. */
+  remoteHostId: string | null
+  toggleRemote: (on: boolean) => Promise<void>
 }
 
 /** Un mismo proyecto puede aparecer bajo dos raices: se queda una vez. */
@@ -144,6 +187,78 @@ function dedupe(list: ProjectEntry[]): ProjectEntry[] {
   const seen = new Map<string, ProjectEntry>()
   for (const p of list) seen.set(p.path, p)
   return [...seen.values()]
+}
+
+// ---------------------------------------------------------------------------
+// Lo que ve el movil
+// ---------------------------------------------------------------------------
+
+/** La foto que se publica: proyectos, agentes y que esta haciendo cada uno. */
+function snapshot(): RemoteSnapshot {
+  const { open, activePath, actividad } = useWorkspaceStore.getState()
+  return {
+    version: 1,
+    activePath,
+    projects: open.map((p) => ({
+      path: p.path,
+      name: p.name,
+      agents: p.agents.map((a) => ({
+        sessionId: a.sessionId,
+        cliId: a.cliId,
+        cliName: a.cliName,
+        actividad: actividad[a.sessionId] ?? 'esperando',
+      })),
+    })),
+  }
+}
+
+/**
+ * Un resumen de la foto, para saber si de verdad cambio.
+ *
+ * El almacen avisa de CUALQUIER cambio, y el gasto de los agentes cambia
+ * cientos de veces por minuto sin que el movil tenga nada nuevo que pintar.
+ * Publicar en cada aviso seria una escritura constante contra la nube.
+ */
+function firma(foto: RemoteSnapshot): string {
+  return (
+    foto.activePath +
+    '|' +
+    foto.projects
+      .map((p) => p.path + ':' + p.agents.map((a) => a.sessionId + a.actividad).join(','))
+      .join(';')
+  )
+}
+
+/**
+ * Cuenta por el bus como esta el mando.
+ *
+ * El interruptor vive en el modulo Movil, que no puede importar este archivo.
+ * Va por el bus y como estado retenido: ese modulo se desmonta al mirar otra
+ * cosa, y al volver tiene que saber si el mando esta puesto sin esperar a que
+ * alguien lo cambie.
+ */
+function anunciarMando() {
+  const { remoteEnabled, remoteHostId, remoteError } = useWorkspaceStore.getState()
+  bus.emit('workspace.remoteState', {
+    enabled: remoteEnabled,
+    hostId: remoteHostId,
+    error: remoteError,
+  })
+}
+
+/** El enchufe que el puente usa para mirar aqui dentro sin importar nada. */
+const puerto: BridgePort = {
+  getSnapshot: snapshot,
+  subscribe: (fn) => {
+    let previa = firma(snapshot())
+    return useWorkspaceStore.subscribe(() => {
+      const ahora = firma(snapshot())
+      if (ahora === previa) return
+      previa = ahora
+      fn()
+    })
+  },
+  onError: (mensaje) => useWorkspaceStore.setState({ remoteError: mensaje }),
 }
 
 const STORAGE_KEY = 'oruka.workspace'
@@ -218,6 +333,32 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   actividad: {},
   loading: false,
   error: null,
+  remoteEnabled: false,
+  remoteError: null,
+  remoteHostId: null,
+
+  /**
+   * Enciende o apaga el mando a distancia.
+   *
+   * Si encender falla, el interruptor se queda abajo. Dejarlo arriba con el
+   * puente muerto es la peor version: el usuario creeria que su telefono manda
+   * cuando no manda.
+   */
+  toggleRemote: async (on) => {
+    set({ remoteError: null })
+    try {
+      if (on) {
+        const hostId = await encender(puerto)
+        set({ remoteEnabled: true, remoteHostId: hostId })
+      } else {
+        await apagar()
+        set({ remoteEnabled: false, remoteHostId: null })
+      }
+    } catch (e) {
+      set({ remoteEnabled: false, remoteHostId: null, remoteError: String(e) })
+    }
+    anunciarMando()
+  },
 
   /** Arranque: detecta CLIs y restaura carpetas y pestanas de la sesion anterior. */
   init: async () => {
@@ -252,6 +393,20 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           escuchar(a.sessionId, a.cliId, (f) => set((st) => ({ usage: f(st.usage) })))
         }
       }
+      // El mando a distancia se queda como lo dejaste. Si no se puede levantar
+      // —sin red, sin sesion— el interruptor se queda abajo y se dice por que:
+      // un mando que se cree encendido y no lo esta es peor que uno apagado.
+      if (await estabaActivo()) {
+        try {
+          const hostId = await encender(puerto)
+          set({ remoteEnabled: true, remoteHostId: hostId })
+        } catch (e) {
+          set({ remoteEnabled: false, remoteHostId: null, remoteError: String(e) })
+        }
+      }
+      // Se anuncia siempre, tambien apagado: el modulo Movil necesita saber
+      // que esta apagado, no quedarse esperando una respuesta que no llega.
+      anunciarMando()
       // Se reconstruye la lista entera: acumular duplicaria los proyectos en
       // cada montaje del modulo. Si una raiz ya no existe en disco, se omite
       // limpiamente sin ensuciar la interfaz con errores de sistema.
@@ -318,6 +473,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const project = get().open.find((p) => p.path === path)
     // Cerrar una pestana mata sus agentes: no dejamos procesos huerfanos.
     for (const agent of project?.agents ?? []) {
+      await guardarVistaPrevia(agent.sessionId)
       await agentKill(agent.sessionId).catch(() => {})
       dejar(agent.sessionId)
     }
@@ -363,9 +519,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     escuchar(agent.sessionId, cliId, (f) => set((st) => ({ usage: f(st.usage) })))
     // Sin esto, un agente lanzado y la app cerrada acto seguido no se recordaba.
     persist(get())
+    void touchSession({
+      id: agent.sessionId,
+      projectPath,
+      projectName: project.name,
+      cliId,
+      cliName: agent.cliName,
+      mode,
+      lastActiveAt: Date.now(),
+    })
   },
 
   removeAgent: async (sessionId) => {
+    await guardarVistaPrevia(sessionId)
     await agentKill(sessionId).catch(() => {})
     dejar(sessionId)
     set((s) => ({
@@ -403,10 +569,36 @@ setInterval(() => {
           ? 'trabajando'
           : 'esperando'
       siguiente[id] = estado
-      if (actividad[id] !== estado) cambio = true
+      if (actividad[id] !== estado) {
+        cambio = true
+        if (estado === 'trabajando') {
+          // Empieza un tramo nuevo. Si ya venia de uno (parpadeo dentro del
+          // mismo tramo) no se pisa el inicio real.
+          if (!trabajandoDesde.has(id)) trabajandoDesde.set(id, ahora)
+        } else if (actividad[id] === 'trabajando') {
+          // Cruza de "trabajando" a lo que sea despues. Solo cuenta como
+          // "termino de verdad" si el tramo duro lo suficiente: un cambio de
+          // pestana redimensiona la terminal y el CLI repinta su pantalla,
+          // lo que por si solo parece un parpadeo de "trabajando".
+          const desde = trabajandoDesde.get(id) ?? ahora
+          if (ahora - desde >= MIN_TRABAJO_MS) void playFinishedSound()
+          trabajandoDesde.delete(id)
+        }
+      }
     }
   }
   // Tambien cambia si desaparecio un agente que estaba en la lista.
   if (!cambio && Object.keys(actividad).length !== Object.keys(siguiente).length) cambio = true
   if (cambio) useWorkspaceStore.setState({ actividad: siguiente })
 }, 500)
+
+/**
+ * El interruptor del mando, accionado desde el modulo Movil.
+ *
+ * Se registra aqui, en el almacen, y no dentro de un componente: el shell
+ * desmonta el modulo que no esta activo, y este archivo en cambio sigue en
+ * memoria desde que la app arranca, porque la barra de estado lo trae.
+ */
+bus.on('workspace.setRemote', ({ on }) => {
+  void useWorkspaceStore.getState().toggleRemote(on)
+})

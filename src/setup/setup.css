@@ -35,7 +35,9 @@
 .setup__summary { margin: 10px 0 0; font-size: var(--fs-xs); color: var(--fg-dim); }
 
 .setup__clis { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
-.setup__cli { display: flex; align-items: center; gap: 8px; padding: 5px 8px; font-size: var(--fs-sm); color: var(--fg-dim); background: var(--bg-editor); border-radius: var(--radius); }
+.setup__cli { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 5px 8px; font-size: var(--fs-sm); color: var(--fg-dim); background: var(--bg-editor); border-radius: var(--radius); }
+.setup__cli-extension { flex-basis: 100%; display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--fg-dim); }
+.setup__cli-extension .codicon-pass-filled { color: var(--state-done); }
 .setup__cli .codicon { font-size: 13px; }
 .setup__cli.is-found { color: var(--fg-muted); }
 .setup__cli-name { flex: 1; color: var(--fg); }

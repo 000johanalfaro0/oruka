@@ -22,13 +22,16 @@ export interface CliMcpState {
 export const mcpCatalog = () => invoke<McpServer[]>('mcp_catalog')
 
 /**
- * Un servidor que no puede arrancar porque le falta su programa base.
+ * Una ficha del catalogo que no puede funcionar porque le falta su programa
+ * base. Vale igual para un servidor MCP y para una skill: las dos quedan
+ * escritas, las dos parecen puestas, y las dos fallan al usarlas.
  *
- * Repartir uno asi seria peor que no ofrecerlo: quedaria escrito en la config
- * del CLI y el usuario creeria tenerlo, cuando en realidad falla al arrancar.
+ * Repartir una asi seria peor que no ofrecerla: quedaria escrita en la config
+ * del CLI y el usuario creeria tenerla, cuando en realidad falla al arrancar.
  */
 export interface MissingRequirement {
-  server_id: string
+  /** Id de la ficha que lo necesita: un servidor MCP o una skill. */
+  item_id: string
   name: string
   bin: string
   url: string

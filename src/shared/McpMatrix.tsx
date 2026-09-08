@@ -58,11 +58,11 @@ export function McpMatrix() {
   const [reciente, setReciente] = useState<string[]>([])
 
   const instalarBase = async (m: MissingRequirement) => {
-    setInstalando(m.server_id)
+    setInstalando(m.item_id)
     setError(null)
     try {
-      await mcpInstallRequirement(m.server_id)
-      setReciente((prev) => [...prev, m.server_id])
+      await mcpInstallRequirement(m.item_id)
+      setReciente((prev) => [...prev, m.item_id])
       setNote(null)
     } catch (e) {
       setError(String(e).slice(-400))
@@ -252,16 +252,16 @@ export function McpMatrix() {
           porque decide si repartirlo tiene sentido siquiera. */}
       {faltan.map((m) => (
         <div
-          key={m.server_id}
-          className={`mcp__falta${reciente.includes(m.server_id) ? ' is-listo' : ''}`}
+          key={m.item_id}
+          className={`mcp__falta${reciente.includes(m.item_id) ? ' is-listo' : ''}`}
         >
           <i
-            className={`codicon codicon-${reciente.includes(m.server_id) ? 'check' : 'warning'}`}
+            className={`codicon codicon-${reciente.includes(m.item_id) ? 'check' : 'warning'}`}
             aria-hidden="true"
           />
           <span>
-            <strong>{catalog.find((c) => c.id === m.server_id)?.name ?? m.server_id}</strong>{' '}
-            {reciente.includes(m.server_id) ? (
+            <strong>{catalog.find((c) => c.id === m.item_id)?.name ?? m.item_id}</strong>{' '}
+            {reciente.includes(m.item_id) ? (
               <>
                 ya tiene <code>{m.name}</code>. Reinicia Oruka para que lo vea: un programa no se
                 entera de que su PATH ha cambiado mientras está abierto.
@@ -272,13 +272,13 @@ export function McpMatrix() {
               </>
             )}
           </span>
-          {reciente.includes(m.server_id) ? null : m.installable ? (
+          {reciente.includes(m.item_id) ? null : m.installable ? (
             <button
               className="mcp__falta-btn"
               disabled={instalando !== null}
               onClick={() => void instalarBase(m)}
             >
-              {instalando === m.server_id ? 'Instalando…' : `Instalar ${m.name}`}
+              {instalando === m.item_id ? 'Instalando…' : `Instalar ${m.name}`}
             </button>
           ) : (
             <a className="mcp__falta-btn" href={m.url} target="_blank" rel="noreferrer">

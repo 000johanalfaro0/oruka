@@ -1,0 +1,40 @@
+.ext-panel {
+  flex: 0 0 260px;
+  padding: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.ext-panel__title { margin: 0 0 4px; font-size: var(--fs-md); font-weight: 600; color: var(--fg); }
+.ext-panel__hint { margin: 0 0 10px; font-size: var(--fs-xs); color: var(--fg-dim); }
+
+.ext-panel__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ext-panel__empty { font-size: var(--fs-xs); color: var(--fg-dim); }
+
+.ext-panel__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+}
+.ext-panel__item .codicon { font-size: 13px; color: var(--fg-dim); }
+.ext-panel__item .codicon-pass-filled { color: var(--state-done); }
+
+.ext-panel__text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.ext-panel__name { font-size: var(--fs-sm); color: var(--fg); }
+.ext-panel__cli { font-size: var(--fs-xs); color: var(--fg-dim); }
+
+.ext-panel__status { font-size: var(--fs-xs); color: var(--fg-dim); white-space: nowrap; }
+
+.ext-panel__open {
+  padding: 2px 8px;
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+  background: var(--bg-editor);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+.ext-panel__open:hover { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }

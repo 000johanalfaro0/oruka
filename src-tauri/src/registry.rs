@@ -38,6 +38,32 @@ pub struct CliManifest {
     /// lo honesto cuando no sabemos el comando.
     #[serde(default)]
     pub install: Option<InstallSpec>,
+    /// La extension de navegador oficial de este CLI, si tiene una.
+    ///
+    /// Alternativa a Browser Harness: algunos agentes traen su propia
+    /// extension para el navegador de siempre del usuario. Ningun programa
+    /// puede instalarla sola -el navegador lo bloquea a proposito-, asi que
+    /// esto solo sirve para saber si ya esta puesta y para abrir la pagina
+    /// exacta si no.
+    #[serde(default, rename = "browserExtension")]
+    pub browser_extension: Option<BrowserExtensionSpec>,
+}
+
+/// Una extension de navegador oficial, tal y como viene en el manifiesto.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BrowserExtensionSpec {
+    pub name: String,
+    /// Id en la Chrome Web Store. Vale igual para Chrome, Edge y Brave: los
+    /// tres instalan desde la misma tienda y la extension queda con el mismo
+    /// id en los tres, es lo que permite comprobarla sin abrir nada.
+    #[serde(rename = "chromeExtensionId")]
+    pub chrome_extension_id: String,
+    #[serde(rename = "chromeStoreUrl")]
+    pub chrome_store_url: String,
+    /// Firefox guarda sus extensiones de otra forma -no se puede comprobar
+    /// igual-, asi que esto solo sirve para abrir la pagina si existe.
+    #[serde(default, rename = "firefoxUrl")]
+    pub firefox_url: Option<String>,
 }
 
 /// El comando exacto que instala un CLI.
@@ -137,15 +163,34 @@ pub struct DetectedCli {
     /// El comando que lo instalaria, si se sabe. La interfaz lo enseña antes
     /// de ejecutarlo y no ofrece boton a quien no lo declare.
     pub install: Option<InstallSpec>,
+    /// La extension de navegador oficial y si ya esta puesta en este equipo.
+    ///
+    /// `installed` se calcula aqui, no en el manifiesto: depende de este
+    /// equipo, no del CLI. Un CLI sin extension oficial no trae este campo.
+    pub browser_extension: Option<DetectedExtension>,
+}
+
+/// Una extension de navegador, ya comprobada contra este equipo.
+#[derive(Debug, Clone, Serialize)]
+pub struct DetectedExtension {
+    pub name: String,
+    pub chrome_store_url: String,
+    pub firefox_url: Option<String>,
+    pub installed: bool,
+    /// En que navegador se encontro, si se encontro. Solo entre los basados
+    /// en Chromium: Firefox guarda sus extensiones de otra forma y no se
+    /// comprueba.
+    pub installed_in: Option<String>,
 }
 
 /// Manifiestos de fabrica.
 fn builtin_manifests() -> Vec<CliManifest> {
-    const SOURCES: [&str; 4] = [
+    const SOURCES: [&str; 5] = [
         include_str!("../../packages/adapters/claude.json"),
         include_str!("../../packages/adapters/codex.json"),
         include_str!("../../packages/adapters/agy.json"),
         include_str!("../../packages/adapters/opencode.json"),
+        include_str!("../../packages/adapters/kilo.json"),
     ];
     SOURCES
         .iter()
@@ -347,6 +392,17 @@ pub fn detect_all() -> Vec<DetectedCli> {
             let role = m.roles.clone();
             let usage = m.usage.clone();
             let install = m.install.clone();
+            let browser_extension = m.browser_extension.as_ref().map(|spec| {
+                let (installed, installed_in) =
+                    crate::browser_ext::detect(&spec.chrome_extension_id);
+                DetectedExtension {
+                    name: spec.name.clone(),
+                    chrome_store_url: spec.chrome_store_url.clone(),
+                    firefox_url: spec.firefox_url.clone(),
+                    installed,
+                    installed_in,
+                }
+            });
             DetectedCli {
                 id: m.id,
                 name: m.name,
@@ -359,6 +415,7 @@ pub fn detect_all() -> Vec<DetectedCli> {
                 role,
                 usage,
                 install,
+                browser_extension,
             }
         })
         .collect()
@@ -422,7 +479,7 @@ mod tests {
     #[test]
     fn los_manifiestos_de_fabrica_son_validos() {
         let manifests = builtin_manifests();
-        assert_eq!(manifests.len(), 4, "deberian cargarse los 4 manifiestos");
+        assert_eq!(manifests.len(), 5, "deberian cargarse los 5 manifiestos");
         for m in &manifests {
             assert!(!m.id.is_empty());
             assert!(!m.detect.bin.is_empty());

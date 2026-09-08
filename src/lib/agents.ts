@@ -50,6 +50,19 @@ export interface DetectedCli {
    * nativo con instalador propio y adivinarlo seria peor que no ofrecerlo.
    */
   install: { command: string; args: string[] } | null
+  /**
+   * La extension de navegador oficial de este CLI, ya comprobada contra este
+   * equipo, si tiene una. Alternativa a Browser Harness: ningun programa
+   * puede instalarla sola -el navegador lo bloquea a proposito-, esto solo
+   * dice si ya esta puesta y desde donde abrir su ficha si no.
+   */
+  browser_extension: {
+    name: string
+    chrome_store_url: string
+    firefox_url: string | null
+    installed: boolean
+    installed_in: string | null
+  } | null
 }
 
 export interface ProjectEntry {
@@ -59,6 +72,9 @@ export interface ProjectEntry {
 }
 
 export const detectClis = () => invoke<DetectedCli[]>('detect_clis')
+
+/** Abre la ficha de una extension de navegador oficial en su tienda. */
+export const openExtensionStore = (url: string) => invoke<void>('open_extension_store', { url })
 
 /**
  * Instala o actualiza un CLI. Devuelve la salida del comando.
@@ -140,4 +156,3 @@ export const onAgentExit = (id: string, handler: () => void): Promise<UnlistenFn
 export const revealInExplorer = (path: string) => invoke<void>('reveal_in_explorer', { path })
 
 /** Deja un prompt largo en un archivo temporal y devuelve su ruta. */
-export const savePrompt = (content: string) => invoke<string>('save_prompt', { content })

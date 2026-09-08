@@ -1,6 +1,6 @@
 # Oruka — estado del proyecto
 
-Última actualización: 2026-08-22
+Última actualización: 2026-09-01
 
 Orquestador desktop de agentes CLI. Ejecuta y supervisa varios agentes de IA
 locales en distintos proyectos, con GitHub y MCP integrados, y un bloc de ideas
@@ -36,11 +36,12 @@ arrancar Vite**. Si lo creas o editas con la app corriendo, hay que reiniciarla.
 | Ideas | Funcional: proyectos con renombrar y borrar, detalle con 2 pestañas, horario, 3 tareas de IA |
 | GitHub | Completo: repos, acceso, invitaciones, PR con diff/checks/revisión/fusión, issues y aviso de revisiones |
 | Ajustes | Parcial: CLIs, MCP, GitHub y Roles reales; **carpetas y apariencia pendientes** |
+| Móvil | Módulo propio junto a Ideas: conectar el equipo, QR para bajar el APK y QR de vinculación. **Sin probar en la app ni en un teléfono.** Desconectado por defecto |
 
 Medidas reales del build de release: instalador NSIS **2,03 MB**, binario 3,2 MB,
 27 MB de RSS el proceso principal. Arranque JS 60 kB gzip.
 
-88 tests en Rust, 1 ignorado a propósito.
+92 tests en Rust, 1 ignorado a propósito.
 
 **Versión publicada: 0.1.16.** La app se actualiza sola desde la 0.1.2. Publicar es `npm run publicar -- <version>
 "<notas>"`: firma, arma el manifiesto y sube la release en un paso. Hacerlo a mano
@@ -56,6 +57,7 @@ son seis, y si falta el `latest.json` la comprobación falla **en silencio**.
         workspace/    grid de agentes, terminales, carpeta de trabajo
         github/       repos, acceso, invitaciones y PR
         ideas/        proyectos, detalle, horario, IA
+        mobile/       conectar el equipo, QR del APK y QR de vinculación
         settings/     ajustes, anclado a la derecha
       setup/          Quick Setup del primer arranque
       auth/           puerta de entrada y sesión
@@ -72,6 +74,9 @@ son seis, y si falta el `latest.json` la comprobación falla **en silencio**.
     packages/
       adapters/       un JSON por CLI (claude, codex, agy, opencode)
       mcp/            un JSON por servidor MCP conocido
+    mobile/           la web del teléfono: entrar, ver agentes, chat e ideas
+    android/          el APK, que es un WebView con `mobile/` dentro
+    supabase/         las migraciones de las tablas del mando a distancia
 
 ### Reglas que no se rompen
 
@@ -106,6 +111,13 @@ son seis, y si falta el `latest.json` la comprobación falla **en silencio**.
 | GitHub **sí** puede lanzar un agente | Estaba pedido («abrir un PR con un agente»). La decisión de arriba era sobre Ideas. Solo GitHub lo emite, y Workspace sigue decidiendo el CLI y el modo |
 | GitHub pasa por `gh`, no por HTTP | `gh` ya resuelve sesión, refresco y límites. Oruka no ve el token, así que tampoco puede filtrarlo |
 | Máximo 4 agentes por proyecto, proyectos ilimitados | Regla estructural del diseño |
+| El APK es la web metida en un WebView | Una sola interfaz que mantener. Pesa 1,5 MB y se construye con `npm run apk` usando el SDK y el Gradle que ya hay en el equipo |
+| Los archivos del APK se sirven por https, no por `file://` | Un WebView sobre `file://` no es «sitio seguro» para el navegador: sin eso no hay cámara para leer el QR ni almacén donde guardar la sesión |
+| El QR de vinculación lleva un código, no la sesión | Doce letras que caducan en 5 minutos y mueren al usarse. Quien fotografíe la pantalla no se lleva la cuenta. La sesión viaja por la base y solo sale por una función de un solo uso |
+| El interruptor vive en el módulo Móvil, no en Workspace | Es donde el usuario va a buscarlo. Viaja por el bus (`workspace.setRemote`), porque los módulos no se importan entre sí y solo Workspace conoce las sesiones |
+| El móvil habla con el PC por Supabase, no por un puerto abierto | No hay que abrir nada en casa ni montar un túnel, y la cuenta y los permisos ya existían. El precio es que el texto de la terminal pasa por la nube del propio usuario |
+| El móvil **nunca ejecuta nada**: deja texto y el PC decide | Es la única puerta desde fuera hacia un PTY. El puente solo escribe en sesiones que existen ahora mismo en el Workspace, así que un id inventado no abre ni lanza nada |
+| El mando viene apagado y se ve mientras está encendido | Encendido, cualquiera con la cuenta puede escribir en agentes que ejecutan cosas en esta máquina. Esconderlo sería lo peor que se puede hacer con eso |
 
 ### Las cuatro protecciones al escribir configs ajenas
 
@@ -291,6 +303,28 @@ comentarios: romperlos deja a alguien sin su herramienta.
     el scope ni el navegador. Lo que **no** da es una ejecución real: no hay
     logs ni reintento, solo el punto de color.
 
+38. **Al escribir código, un escape de texto puede acabar como byte de control real.**
+    Al escribir código que limpia escapes ANSI, lo que se teclea como escape
+    puede acabar en el archivo como el carácter invisible. Funciona, pero no se
+    puede revisar ni sobrevive a un copiar y pegar descuidado, y el lint lo
+    rechaza. Por eso `remoteBridge.ts` los construye con `String.fromCharCode`:
+    todo el archivo es texto normal y se puede leer en voz alta.
+39. **El manifiesto de la web instalable no puede pasar por el empaquetador.**
+    Puesto junto al `index.html`, Vite lo mueve a `assets/` con un nombre nuevo,
+    y sus rutas relativas a los iconos —que están en la raíz— dejan de
+    encontrarlos. Va en `mobile/public/`, que se copia tal cual.
+
+40. **El módulo `mobile` no está en la lista de la frontera del lint.**
+    `eslint.config.js` genera la regla «un módulo no importa a otro» desde una
+    lista escrita a mano, y añadir `mobile` ahí está bloqueado por el hook que
+    protege las configuraciones. El módulo respeta la regla —solo habla por el
+    bus—, pero **nadie lo está vigilando**. Añadir `'mobile'` a esa lista es lo
+    primero que hay que hacer al desactivar ese hook.
+41. **El APK necesita servir sus archivos por https.** Un WebView que abre
+    `file://` no cuenta como sitio seguro, y sin eso el navegador no da cámara
+    ni almacén: el escaneo del QR se queda en negro y la sesión no se guarda.
+    Se resuelve con `WebViewAssetLoader`, que sirve lo del paquete bajo
+    `https://appassets.androidplatform.net/`.
 ---
 
 ## Entorno local
@@ -442,7 +476,11 @@ es una migración de Supabase y necesita permiso explícito.
 
 ### MCP
 
-- **Plantillas de fábrica disponibles (7):** GitHub, Context7, **Browser Harness** (`@blopai/browser-harness`), Playwright, Filesystem, Memory y Pencil.
+- **Plantillas de fábrica disponibles (6):** GitHub, Context7, Playwright, Filesystem, Memory y Pencil.
+- **Browser Harness salió de esta lista.** `@blopai/browser-harness` publica una CLI, no un
+  servidor MCP: el cliente lo arrancaba, recibía su ayuda por salida estándar y cerraba la
+  conexión, así que el usuario leía «servidor caído» de una herramienta que funcionaba. Vive
+  en el catálogo de Skills, que es su forma real de uso.
 - Formulario para añadir un MCP propio.
 - Credenciales en el gestor del sistema.
 - Soportar `opencode.jsonc` con comentarios en vez de negarse. Hoy Oruka se

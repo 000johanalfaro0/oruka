@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import * as ai from './ai'
 import * as repo from './repository'
 import { buildAgentPrompt, formatOrganized } from './agentPrompt'
+import { writeClipboard } from '@/lib/clipboard'
 import {
   STATUS_LABEL,
   type Idea,
@@ -53,9 +54,10 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
     const clean = content.trim()
     if (!clean) return
     setBusy(true)
+    setError(null)
     try {
-      const idea = await repo.createIdea(project.id, clean, extra)
-      setIdeas((prev) => [...prev, idea])
+      const newIdeas = await repo.createIdea(project.id, clean, extra)
+      setIdeas((prev) => [...prev, ...newIdeas])
       setDraft('')
     } catch (e) {
       setError(String(e))
@@ -179,7 +181,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
         <button
           className="ipd__agent"
           onClick={() =>
-            void navigator.clipboard.writeText(buildAgentPrompt({ ...project, status }, ideas))
+            void writeClipboard(buildAgentPrompt({ ...project, status }, ideas))
           }
           title="Copia el bloc de notas completo como prompt, listo para pegar donde quieras"
         >
@@ -371,7 +373,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
               <div className="org__actions">
                 <button
                   onClick={() =>
-                    void navigator.clipboard.writeText(formatOrganized(organize.result))
+                    void writeClipboard(formatOrganized(organize.result))
                   }
                 >
                   Copiar

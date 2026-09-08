@@ -25,12 +25,19 @@
   display: flex;
   align-items: center;
   height: var(--h-tabs);
+  min-height: var(--h-tabs);
+  max-height: var(--h-tabs);
   background: var(--bg-chrome);
   border-bottom: 1px solid var(--border);
   flex: 0 0 auto;
   overflow-x: auto;
+  scrollbar-width: none;
   padding: 0 6px;
-  gap: 2px;
+  gap: 3px;
+}
+
+.ws-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .ws-tab {
@@ -124,15 +131,18 @@
   gap: 6px;
   font-size: var(--fs-xs);
   font-weight: 500;
-  color: var(--accent-fg);
-  background: var(--accent);
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-strong);
   padding: 5px 12px;
   border-radius: var(--radius);
-  transition: opacity 120ms ease;
+  transition: all 120ms ease;
 }
 
 .ws-picker__addroot:hover {
-  opacity: 0.9;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--accent);
+  color: #ffffff;
 }
 
 .ws-picker__list {
@@ -141,20 +151,20 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .ws-picker__item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 8px 12px;
+  padding: 9px 14px;
   background: var(--bg-chrome);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: all 120ms ease;
 }
 
 .ws-picker__item:hover {
@@ -165,6 +175,7 @@
 .ws-picker__item .codicon-root-folder {
   font-size: 18px;
   color: var(--accent);
+  opacity: 0.85;
 }
 
 .ws-picker__info {
@@ -231,6 +242,8 @@
   gap: 10px;
   padding: 0 8px;
   height: 28px;
+  min-height: 28px;
+  max-height: 28px;
   background: var(--bg-chrome);
   border-bottom: 1px solid var(--border);
   flex: 0 0 auto;
@@ -373,6 +386,7 @@
 .ws-picker__addroot { display: flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--fg-muted); padding: 3px 8px; border-radius: var(--radius); }
 .ws-picker__addroot:hover { background: var(--hover); color: var(--fg); }
 .ws-picker__empty { font-size: var(--fs-sm); color: var(--fg-dim); padding: 4px 8px; }
+
 .ws-empty__error { margin: 0; font-size: var(--fs-xs); color: var(--state-error); }
 
 .ws-tab__agents {

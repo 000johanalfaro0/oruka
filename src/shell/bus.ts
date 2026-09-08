@@ -19,6 +19,8 @@ export interface BusEvents {
     projectPath: string
     cli?: string
     prompt?: string
+    /** Continuar la ultima conversacion de ese CLI ahi, en vez de empezar otra. */
+    resume?: boolean
   }
   /** Abrir un proyecto en una pestana, sin lanzar nada. */
   'workspace.openProject': { projectPath: string }
@@ -32,6 +34,28 @@ export interface BusEvents {
    * cambio.
    */
   'workspace.projectChanged': { projectPath: string | null }
+  /**
+   * Encender o apagar el mando a distancia.
+   *
+   * Lo pide el modulo Movil, que es donde esta el interruptor, pero quien lo
+   * ejecuta es Workspace, que es el unico que conoce las sesiones. Va por
+   * `request` y no por `emit`: si Workspace todavia no esta en memoria, la
+   * peticion espera en vez de perderse.
+   */
+  'workspace.setRemote': { on: boolean }
+  /**
+   * Como esta el mando ahora mismo.
+   *
+   * Es estado, no aviso: va en `RETAINED`. El modulo Movil se desmonta cada vez
+   * que miras otra cosa, y al volver tiene que saber si el mando esta puesto
+   * sin esperar a que alguien lo cambie.
+   */
+  'workspace.remoteState': {
+    enabled: boolean
+    /** El id de este equipo en la nube. Es lo que el telefono acaba usando. */
+    hostId: string | null
+    error: string | null
+  }
 }
 
 type Handler<K extends keyof BusEvents> = (payload: BusEvents[K]) => void
@@ -60,7 +84,7 @@ const parked = new Map<string, unknown>()
  * entrega en CADA suscripcion, porque el shell desmonta el modulo inactivo y
  * cada montaje vuelve a necesitarlo.
  */
-const RETAINED = new Set<string>(['workspace.projectChanged'])
+const RETAINED = new Set<string>(['workspace.projectChanged', 'workspace.remoteState'])
 const retained = new Map<string, unknown>()
 
 export const bus = {

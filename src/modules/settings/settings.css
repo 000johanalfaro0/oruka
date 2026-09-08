@@ -23,6 +23,10 @@
 .settings__nav-item.is-active { background: var(--selection); color: var(--fg); }
 
 .settings__panel { padding: 20px 24px; overflow-y: auto; max-width: 720px; }
+/* La matriz MCP mas el panel de extensiones no caben en el ancho normal. */
+.settings__panel:has(.settings__mcp-layout) { max-width: 1000px; }
+.settings__mcp-layout { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.settings__mcp-layout .mcp { flex: 1 1 480px; min-width: 0; }
 .settings__title { margin: 0 0 6px; font-size: var(--fs-lg); font-weight: 600; }
 .settings__pending {
   display: inline-flex;
@@ -92,3 +96,25 @@
   border-radius: var(--radius);
 }
 .settings__relaunch:hover { background: var(--hover); color: var(--fg); }
+
+.settings__sound-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+.settings__sound-toggle:hover { color: var(--fg); }
+
+.router-section__estado {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+}
+.router-section__estado .codicon-pass-filled { color: var(--state-done); }
+.router-section__acciones { display: flex; align-items: center; gap: 8px; }

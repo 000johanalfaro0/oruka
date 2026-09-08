@@ -31,6 +31,17 @@ const FILTROS: Array<{ id: PrFilter; label: string }> = [
   { id: 'review', label: 'Revisión' },
 ]
 
+const REVIEW_LABELS: Record<string, string> = {
+  APPROVED: 'aprobado',
+  CHANGES_REQUESTED: 'cambios pedidos',
+  REVIEW_REQUIRED: 'falta revisión',
+}
+
+const REVIEW_TONES: Record<string, string> = {
+  APPROVED: 'ok',
+  CHANGES_REQUESTED: 'alert',
+}
+
 interface Props {
   projectPath: string | null
   onCopy: (text: string, label: string) => void
@@ -350,26 +361,10 @@ function abrirConAgente(projectPath: string | null, repo: string, pr: PullReques
 
 /** El vocabulario de GitHub, dicho en corto y en castellano. */
 function reviewLabel(decision: string): string {
-  switch (decision) {
-    case 'APPROVED':
-      return 'aprobado'
-    case 'CHANGES_REQUESTED':
-      return 'cambios pedidos'
-    case 'REVIEW_REQUIRED':
-      return 'falta revisión'
-    default:
-      return decision.toLowerCase()
-  }
+  return REVIEW_LABELS[decision] ?? decision.toLowerCase()
 }
 
 /** Que color le toca. Los tonos salen de los tokens, aqui solo se elige cual. */
 function reviewTone(decision: string): string {
-  switch (decision) {
-    case 'APPROVED':
-      return 'ok'
-    case 'CHANGES_REQUESTED':
-      return 'alert'
-    default:
-      return 'wait'
-  }
+  return REVIEW_TONES[decision] ?? 'wait'
 }

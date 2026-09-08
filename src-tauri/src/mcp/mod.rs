@@ -49,16 +49,24 @@ pub struct Requires {
     pub winget: Option<String>,
     #[serde(default)]
     pub brew: Option<String>,
+    /// Paquete npm global, cuando lo que falta se publica en npm.
+    ///
+    /// Se mira antes que winget y brew porque no depende del sistema: el mismo
+    /// id sirve en Windows, macOS y Linux, y Oruka ya instala asi los CLIs.
+    #[serde(default)]
+    pub npm: Option<String>,
     pub url: String,
 }
 
-/// Si a un servidor le falta su programa base en este equipo.
+/// Si a una ficha del catalogo le falta su programa base en este equipo.
 ///
 /// Se mira el PATH, que es la unica verdad: que el JSON lo declare no significa
-/// que este instalado.
+/// que este instalado. Lo usan por igual los servidores MCP y las skills: la
+/// pregunta «esto no va a arrancar» es la misma en los dos sitios.
 #[derive(Debug, Serialize)]
 pub struct MissingRequirement {
-    pub server_id: String,
+    /// Id de la ficha que lo necesita, sea un servidor MCP o una skill.
+    pub item_id: String,
     pub name: String,
     pub bin: String,
     pub url: String,
@@ -66,34 +74,42 @@ pub struct MissingRequirement {
     pub installable: bool,
 }
 
-/// Lo que le falta al catalogo para funcionar en este equipo.
+/// Si Oruka puede instalar esta dependencia en este sistema.
+pub fn can_install(r: &Requires) -> bool {
+    r.npm.is_some()
+        || if cfg!(windows) {
+            r.winget.is_some()
+        } else if cfg!(target_os = "macos") {
+            r.brew.is_some()
+        } else {
+            false
+        }
+}
+
+/// Convierte una dependencia declarada en un aviso, solo si de verdad falta.
+pub fn missing_for(item_id: &str, requires: &Option<Requires>) -> Option<MissingRequirement> {
+    let r = requires.as_ref()?;
+    if crate::registry::resolve_bin(&r.bin).is_some() {
+        return None;
+    }
+    Some(MissingRequirement {
+        item_id: item_id.to_string(),
+        name: r.name.clone(),
+        bin: r.bin.clone(),
+        url: r.url.clone(),
+        installable: can_install(r),
+    })
+}
+
+/// Lo que le falta al catalogo de MCP para funcionar en este equipo.
 pub fn missing() -> Vec<MissingRequirement> {
     catalog()
         .into_iter()
-        .filter_map(|s| {
-            let r = s.requires?;
-            if crate::registry::resolve_bin(&r.bin).is_some() {
-                return None;
-            }
-            let installable = if cfg!(windows) {
-                r.winget.is_some()
-            } else if cfg!(target_os = "macos") {
-                r.brew.is_some()
-            } else {
-                false
-            };
-            Some(MissingRequirement {
-                server_id: s.id,
-                name: r.name,
-                bin: r.bin,
-                url: r.url,
-                installable,
-            })
-        })
+        .filter_map(|s| missing_for(&s.id, &s.requires))
         .collect()
 }
 
-/// Instala el programa base que le falta a un servidor.
+/// Instala el programa base que le falta a un servidor MCP.
 pub fn install_requirement(server_id: &str) -> Result<String, String> {
     let s = catalog()
         .into_iter()
@@ -102,9 +118,19 @@ pub fn install_requirement(server_id: &str) -> Result<String, String> {
     let r = s
         .requires
         .ok_or_else(|| format!("{} no depende de nada que instalar", s.name))?;
+    install_bin(&r)
+}
 
-    let (bin, args): (&str, Vec<String>) = if cfg!(windows) {
-        let id = r.winget.ok_or_else(|| {
+/// Instala una dependencia declarada, con el gestor que corresponda.
+///
+/// Vive aqui y no en cada modulo porque la dependencia no sabe de MCP ni de
+/// skills: es un programa que tiene que estar en el PATH, y se instala igual.
+pub fn install_bin(r: &Requires) -> Result<String, String> {
+    let (bin, args): (&str, Vec<String>) = if let Some(id) = r.npm.clone() {
+        // npm va primero: el mismo id sirve en los tres sistemas.
+        ("npm", vec!["install".into(), "-g".into(), id])
+    } else if cfg!(windows) {
+        let id = r.winget.clone().ok_or_else(|| {
             format!("{} hay que instalarlo a mano: {}", r.name, r.url)
         })?;
         (
@@ -119,7 +145,7 @@ pub fn install_requirement(server_id: &str) -> Result<String, String> {
             ],
         )
     } else if cfg!(target_os = "macos") {
-        let id = r.brew.ok_or_else(|| {
+        let id = r.brew.clone().ok_or_else(|| {
             format!("{} hay que instalarlo a mano: {}", r.name, r.url)
         })?;
         ("brew", vec!["install".into(), id])
@@ -171,11 +197,16 @@ pub struct CliMcpState {
 }
 
 /// Catalogo de fabrica.
+///
+/// Aqui solo entra lo que de verdad habla MCP. Browser Harness estuvo en esta
+/// lista y no lo es: `@blopai/browser-harness` publica una CLI, asi que el
+/// cliente lo arrancaba, veia su ayuda por salida y cerraba la conexion. El
+/// usuario leia «servidor caido» de algo que funcionaba. Vive en el catalogo de
+/// skills, que es su forma real de uso.
 pub fn catalog() -> Vec<McpServer> {
-    const SOURCES: [&str; 7] = [
+    const SOURCES: [&str; 6] = [
         include_str!("../../../packages/mcp/github.json"),
         include_str!("../../../packages/mcp/context7.json"),
-        include_str!("../../../packages/mcp/browser-harness.json"),
         include_str!("../../../packages/mcp/playwright.json"),
         include_str!("../../../packages/mcp/filesystem.json"),
         include_str!("../../../packages/mcp/memory.json"),
@@ -388,6 +419,18 @@ mod tests {
                 assert!(s.requires.is_none(), "{} va con npx y no necesita nada", s.id);
             }
         }
+    }
+
+    #[test]
+    fn el_catalogo_solo_tiene_cosas_que_hablan_mcp() {
+        // Browser Harness es una CLI, no un servidor MCP. Estando aqui, el
+        // cliente lo arrancaba, recibia su ayuda por salida y cerraba: un
+        // «servidor caido» permanente de algo que funciona. Su sitio es el
+        // catalogo de skills.
+        assert!(
+            !catalog().iter().any(|s| s.id == "browser-harness"),
+            "browser-harness no habla MCP: va en skills"
+        );
     }
 
     #[test]

@@ -4,6 +4,7 @@
 //! comandos. El front nunca habla con procesos, ficheros de configuracion ni
 //! con la red: siempre a traves de uno de estos comandos.
 
+mod browser_ext;
 mod github;
 mod mcp;
 mod node;
@@ -12,6 +13,7 @@ mod projects;
 mod pty;
 pub mod registry;
 mod roles;
+mod router_service;
 mod skills;
 mod store;
 
@@ -21,6 +23,7 @@ use tauri::{AppHandle, State};
 
 use pty::{PtyManager, SharedPty};
 use registry::DetectedCli;
+use router_service::{RouterState, RouterStatus, SharedRouter};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -33,6 +36,7 @@ pub fn run() {
         // Hace falta para reiniciar despues de aplicar la actualizacion.
         .plugin(tauri_plugin_process::init())
         .manage(Arc::new(PtyManager::default()))
+        .manage(Arc::new(RouterState::default()))
         .invoke_handler(tauri::generate_handler![
             app_version,
             store_get,
@@ -79,6 +83,8 @@ pub fn run() {
             skills_state,
             skills_preview,
             skills_apply,
+            skills_missing,
+            skills_install_requirement,
             roles_plan,
             roles_apply,
             roles_revert,
@@ -88,6 +94,14 @@ pub fn run() {
             agent_resize,
             agent_kill,
             agent_scrollback,
+            clipboard_read,
+            clipboard_write,
+            router_status,
+            router_install,
+            router_start,
+            router_stop,
+            router_open_panel,
+            open_extension_store,
         ])
         .run(tauri::generate_context!())
         .expect("error al arrancar Oruka");
@@ -498,6 +512,21 @@ fn skills_apply(cli_id: String, skill: skills::Skill, remove: bool) -> Result<St
     skills::apply(&cli_id, &skill, remove)
 }
 
+/// Skills cuyo programa base no esta en este equipo.
+///
+/// Una skill se escribe siempre bien, asi que sin esto parece instalada y
+/// util. El fallo aparecia despues, cuando el agente ejecutaba lo que la skill
+/// le manda y no existia.
+#[tauri::command]
+async fn skills_missing() -> Vec<mcp::MissingRequirement> {
+    skills::missing()
+}
+
+#[tauri::command]
+async fn skills_install_requirement(skill_id: String) -> Result<String, String> {
+    skills::install_requirement(&skill_id)
+}
+
 /// Instala o actualiza un CLI con el comando que declare su manifiesto.
 ///
 /// Es el mismo comando para las dos cosas: `npm install -g` trae la ultima
@@ -509,6 +538,42 @@ fn skills_apply(cli_id: String, skill: skills::Skill, remove: bool) -> Result<St
 #[tauri::command]
 async fn install_cli(cli_id: String) -> Result<String, String> {
     registry::install(&cli_id)
+}
+
+/// Estado del servicio 9Router: instalado, corriendo, en que puerto.
+#[tauri::command]
+async fn router_status(state: State<'_, SharedRouter>) -> Result<RouterStatus, String> {
+    Ok(router_service::status(&state))
+}
+
+/// Instala 9Router por npm. Async por lo mismo que `install_cli`.
+#[tauri::command]
+async fn router_install() -> Result<String, String> {
+    router_service::install()
+}
+
+/// Arranca el servicio. Devuelve la contrasena inicial la primera vez, para
+/// que el usuario entre al panel web sin tener que ir a buscarla a mano.
+#[tauri::command]
+async fn router_start(app: AppHandle, state: State<'_, SharedRouter>) -> Result<String, String> {
+    router_service::start(&app, &state)?;
+    router_service::initial_password(&app)
+}
+
+#[tauri::command]
+async fn router_stop(app: AppHandle, state: State<'_, SharedRouter>) -> Result<(), String> {
+    router_service::stop(&app, &state)
+}
+
+#[tauri::command]
+async fn router_open_panel() -> Result<(), String> {
+    router_service::open_panel()
+}
+
+/// Abre la ficha de una extension de navegador oficial en su tienda.
+#[tauri::command]
+async fn open_extension_store(url: String) -> Result<(), String> {
+    browser_ext::open_store(&url)
 }
 
 /// Estado de Node.js / npm en este equipo.
@@ -584,4 +649,94 @@ fn save_prompt(content: String) -> Result<String, String> {
     let path = std::env::temp_dir().join(format!("oruka-prompt-{stamp}.md"));
     std::fs::write(&path, content).map_err(|e| format!("no se pudo guardar el prompt: {e}"))?;
     Ok(path.to_string_lossy().to_string())
+}
+
+#[cfg(target_os = "windows")]
+mod win_clipboard {
+    use std::ffi::{OsStr, OsString};
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
+    use std::ptr::null_mut;
+
+    extern "system" {
+        fn OpenClipboard(hWndNewOwner: *mut std::ffi::c_void) -> i32;
+        fn CloseClipboard() -> i32;
+        fn EmptyClipboard() -> i32;
+        fn GetClipboardData(uFormat: u32) -> *mut std::ffi::c_void;
+        fn SetClipboardData(uFormat: u32, hMem: *mut std::ffi::c_void) -> *mut std::ffi::c_void;
+        fn GlobalAlloc(uFlags: u32, dwBytes: usize) -> *mut std::ffi::c_void;
+        fn GlobalLock(hMem: *mut std::ffi::c_void) -> *mut std::ffi::c_void;
+        fn GlobalUnlock(hMem: *mut std::ffi::c_void) -> i32;
+    }
+
+    const CF_UNICODETEXT: u32 = 13;
+    const GMEM_MOVEABLE: u32 = 0x0002;
+
+    pub fn read_text() -> Result<String, String> {
+        unsafe {
+            if OpenClipboard(null_mut()) == 0 {
+                return Ok(String::new());
+            }
+            let handle = GetClipboardData(CF_UNICODETEXT);
+            if handle.is_null() {
+                CloseClipboard();
+                return Ok(String::new());
+            }
+            let ptr = GlobalLock(handle) as *const u16;
+            if ptr.is_null() {
+                CloseClipboard();
+                return Ok(String::new());
+            }
+            let mut len = 0;
+            while *ptr.add(len) != 0 {
+                len += 1;
+            }
+            let slice = std::slice::from_raw_parts(ptr, len);
+            let text = OsString::from_wide(slice).to_string_lossy().into_owned();
+            GlobalUnlock(handle);
+            CloseClipboard();
+            Ok(text)
+        }
+    }
+
+    pub fn write_text(text: &str) -> Result<(), String> {
+        unsafe {
+            if OpenClipboard(null_mut()) == 0 {
+                return Err("No se pudo abrir el portapapeles".into());
+            }
+            EmptyClipboard();
+            let wide: Vec<u16> = OsStr::new(text).encode_wide().chain(Some(0)).collect();
+            let bytes = wide.len() * std::mem::size_of::<u16>();
+            let hmem = GlobalAlloc(GMEM_MOVEABLE, bytes);
+            if hmem.is_null() {
+                CloseClipboard();
+                return Err("Fallo de asignación de memoria".into());
+            }
+            let ptr = GlobalLock(hmem) as *mut u16;
+            if !ptr.is_null() {
+                std::ptr::copy_nonoverlapping(wide.as_ptr(), ptr, wide.len());
+                GlobalUnlock(hmem);
+                SetClipboardData(CF_UNICODETEXT, hmem);
+            }
+            CloseClipboard();
+            Ok(())
+        }
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+mod win_clipboard {
+    pub fn read_text() -> Result<String, String> { Ok(String::new()) }
+    pub fn write_text(_text: &str) -> Result<(), String> { Ok(()) }
+}
+
+/// Lee el portapapeles directamente desde el sistema operativo sin disparar avisos web.
+#[tauri::command]
+fn clipboard_read() -> Result<String, String> {
+    win_clipboard::read_text()
+}
+
+/// Escribe en el portapapeles del sistema operativo de forma nativa.
+#[tauri::command]
+fn clipboard_write(text: String) -> Result<(), String> {
+    win_clipboard::write_text(&text)
 }

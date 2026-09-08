@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-mobile/
 src-tauri/target/
 *.local
 .DS_Store
@@ -12,3 +13,8 @@ src-tauri/target/
 # Claves de firma: nunca al repositorio.
 *.key
 *.key.pub
+
+android/app/build/
+android/.gradle/
+android/app/src/main/assets/
+dist-apk/

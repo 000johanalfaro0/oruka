@@ -60,5 +60,10 @@
       "-g",
       "@openai/codex"
     ]
+  },
+  "browserExtension": {
+    "name": "Codex for Chrome",
+    "chromeExtensionId": "hehggadaopoacecdllhhajmbjkdcmajg",
+    "chromeStoreUrl": "https://chromewebstore.google.com/detail/codex/hehggadaopoacecdllhhajmbjkdcmajg"
   }
 }

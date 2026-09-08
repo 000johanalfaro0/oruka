@@ -7,21 +7,21 @@
   --bg-editor: #101010;
   --bg-chrome: #161616;
   --bg-elevated: #1e1e1e;
-  --bg-input: #1c1c1c;
+  --bg-input: #1a1a1a;
   --border: #282828;
   --border-strong: #383838;
 
-  /* Texto */
-  --fg: #ffffff;
-  --fg-muted: #9e9e9e;
-  --fg-dim: #6e6e6e;
+  /* Texto - Alto contraste y máxima nitidez */
+  --fg: #f5f5f5;
+  --fg-muted: #b4b4b4;
+  --fg-dim: #8a8a8a;
 
   /* Interaccion */
-  --accent: #4d78cc;
+  --accent: #5b8def;
   --accent-fg: #ffffff;
-  --hover: #222222;
-  --selection: rgba(77, 120, 204, 0.35);
-  --focus: #4d78cc;
+  --hover: #242424;
+  --selection: rgba(91, 141, 239, 0.28);
+  --focus: #5b8def;
 
   /* Estados de agente y de proyecto */
   --state-done: #34a853;
