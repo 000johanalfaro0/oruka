@@ -65,6 +65,16 @@ textarea {
   font-weight: 600;
 }
 
+.update-banner {
+  display: block;
+  padding: 8px 16px;
+  font-size: var(--fs-sm);
+  color: var(--accent-fg);
+  background: var(--accent);
+  text-align: center;
+  text-decoration: none;
+}
+
 .topbar__sub {
   color: var(--fg-dim);
   font-size: var(--fs-xs);
