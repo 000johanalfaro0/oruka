@@ -5,6 +5,7 @@ import { Pair } from './screens/Pair'
 import { Hosts } from './screens/Hosts'
 import { Chat } from './screens/Chat'
 import { Ideas } from './screens/Ideas'
+import { APK_URL, useUpdateCheck } from './updateCheck'
 
 /** El agente que se esta mirando, con lo justo para pintar la cabecera. */
 export interface ChatTarget {
@@ -30,6 +31,7 @@ export function App() {
   const [puerta, setPuerta] = useState<'qr' | 'correo'>('qr')
   const [pestana, setPestana] = useState<'agentes' | 'ideas'>('agentes')
   const [chat, setChat] = useState<ChatTarget | null>(null)
+  const { versionNueva } = useUpdateCheck()
 
   useEffect(() => {
     void (async () => {
@@ -61,6 +63,12 @@ export function App() {
       <header className="topbar">
         <span className="topbar__title">{pestana === 'agentes' ? 'Agentes' : 'Ideas'}</span>
       </header>
+
+      {versionNueva && (
+        <a className="update-banner" href={APK_URL}>
+          Hay una versión nueva ({versionNueva}) · toca para bajarla
+        </a>
+      )}
 
       <main className="body">
         {pestana === 'agentes' ? <Hosts onAbrir={setChat} /> : <Ideas />}

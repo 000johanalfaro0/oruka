@@ -1,6 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { fileURLToPath, URL } from 'node:url'
+import { readFileSync } from 'node:fs'
+
+/** La misma version que llevan el instalador de escritorio y el APK. */
+const { version } = JSON.parse(
+  readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8'),
+) as { version: string }
 
 /**
  * La web instalable del telefono.
@@ -33,6 +39,9 @@ export default defineConfig({
   },
   // `host: true` para poder abrirlo desde el telefono contra este equipo.
   server: { port: 1421, strictPort: true, host: true },
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+  },
   build: {
     target: 'es2020',
     outDir: fileURLToPath(new URL('../dist-mobile', import.meta.url)),
