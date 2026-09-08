@@ -249,9 +249,22 @@ textarea {
 }
 
 .group__cerrar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
   margin-right: 10px;
-  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
   color: var(--fg-dim);
+  font-size: var(--fs-sm);
+  line-height: 1;
+}
+
+.group__cerrar:active {
+  background: var(--hover);
 }
 
 .group__cerrar:disabled {
@@ -260,6 +273,36 @@ textarea {
 
 .cerradas {
   border-top: 1px solid var(--border);
+}
+
+.cerradas__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 14px;
+  color: var(--fg-dim);
+  font-size: var(--fs-xs);
+  background: transparent;
+}
+
+.cerradas__toggle:active {
+  background: var(--hover);
+}
+
+.cerradas__flecha {
+  color: var(--fg-dim);
+}
+
+.cerradas__buscar {
+  display: block;
+  width: calc(100% - 28px);
+  margin: 0 14px 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--fg);
 }
 
 /* Fila pulsable. 52px de alto: por debajo de eso se falla al tocar. */

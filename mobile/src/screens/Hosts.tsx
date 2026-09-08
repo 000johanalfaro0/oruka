@@ -44,6 +44,10 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
   const [error, setError] = useState<string | null>(null)
   /** La ruta que se acaba de pedir abrir o cerrar, mientras se confirma. */
   const [pendiente, setPendiente] = useState<string | null>(null)
+  /** Si la lista de "otras carpetas" esta desplegada, por equipo. */
+  const [otrasAbiertas, setOtrasAbiertas] = useState<Record<string, boolean>>({})
+  /** Lo que se esta buscando en esa lista, por equipo. */
+  const [busquedas, setBusquedas] = useState<Record<string, string>>({})
   const relayRef = useRef<Relay | null>(null)
 
   useEffect(() => {
@@ -171,23 +175,52 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
 
             {cerradas.length > 0 && (
               <div className="cerradas">
-                <p className="group">Otras carpetas</p>
-                {cerradas.map((c) => (
-                  <button
-                    type="button"
-                    className="row"
-                    key={c.path}
-                    disabled={!enLinea || pendiente === c.path}
-                    onClick={() => void pedir(host, c.path, 'open_project')}
-                  >
-                    <span className="row__text">
-                      <span className="row__title">{c.name}</span>
-                    </span>
-                    <span className="row__hint">
-                      {pendiente === c.path ? 'abriendo…' : 'abrir'}
-                    </span>
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  className="cerradas__toggle"
+                  onClick={() =>
+                    setOtrasAbiertas((s) => ({ ...s, [host.id]: !s[host.id] }))
+                  }
+                >
+                  <span>Otras carpetas ({cerradas.length})</span>
+                  <span className="cerradas__flecha">{otrasAbiertas[host.id] ? '▾' : '▸'}</span>
+                </button>
+
+                {otrasAbiertas[host.id] && (
+                  <>
+                    {cerradas.length > 6 && (
+                      <input
+                        type="search"
+                        className="cerradas__buscar"
+                        placeholder="Buscar una carpeta…"
+                        value={busquedas[host.id] ?? ''}
+                        onChange={(e) =>
+                          setBusquedas((s) => ({ ...s, [host.id]: e.target.value }))
+                        }
+                      />
+                    )}
+                    {cerradas
+                      .filter((c) =>
+                        c.name.toLowerCase().includes((busquedas[host.id] ?? '').toLowerCase()),
+                      )
+                      .map((c) => (
+                        <button
+                          type="button"
+                          className="row"
+                          key={c.path}
+                          disabled={!enLinea || pendiente === c.path}
+                          onClick={() => void pedir(host, c.path, 'open_project')}
+                        >
+                          <span className="row__text">
+                            <span className="row__title">{c.name}</span>
+                          </span>
+                          <span className="row__hint">
+                            {pendiente === c.path ? 'abriendo…' : 'abrir'}
+                          </span>
+                        </button>
+                      ))}
+                  </>
+                )}
               </div>
             )}
           </section>
