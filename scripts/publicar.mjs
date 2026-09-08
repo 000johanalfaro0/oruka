@@ -136,3 +136,7 @@ corre('gh', [
 console.log(
   `\nPublicada v${version}. Quien tenga 0.1.2 o posterior recibira el aviso al abrir la app.`,
 )
+console.log(
+  'Pendiente a mano: actualizar la fila latest_version de la tabla app_meta en Supabase ' +
+    `(pkkofllpzmmvzjlfhhoa) a "${version}", o el movil seguira ofreciendo la version vieja.`,
+)

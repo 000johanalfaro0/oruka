@@ -1,8 +1,17 @@
 import { useEffect, useState } from 'react'
+import { getSupabase } from '@/lib/supabase'
 
 /**
- * Revisa si hay una version mas nueva que esta, mirando la misma lista que ya
- * usa la app de escritorio para actualizarse sola.
+ * Revisa si hay una version mas nueva que esta.
+ *
+ * No se pregunta al `latest.json` de GitHub directamente: ese archivo no
+ * trae los encabezados de CORS que un navegador exige para dejarlo leer
+ * desde una pagina web -funciona con curl o con la app de escritorio (que no
+ * es un navegador), pero un `fetch()` de aqui se cae en silencio siempre,
+ * tenga la version que tenga el telefono. Se pregunta en cambio a la misma
+ * base de datos que ya usa todo lo demas, que si acepta lecturas desde el
+ * navegador. `scripts/publicar.mjs` deja escrita ahi la version en cada
+ * publicacion.
  *
  * Android no deja instalar nada sin que la persona toque "Instalar" -eso no
  * se puede saltar viniendo de fuera de la tienda de Google, ni aqui ni en
@@ -10,13 +19,7 @@ import { useEffect, useState } from 'react'
  * y avisar; el toque final para instalar sigue siendo de quien usa el
  * telefono.
  */
-const MANIFEST_URL =
-  'https://github.com/000johanalfaro0/oruka/releases/latest/download/latest.json'
 export const APK_URL = 'https://github.com/000johanalfaro0/oruka/releases/latest/download/oruka.apk'
-
-interface Manifest {
-  version: string
-}
 
 /** Compara "0.1.18" contra "0.1.17": true si la primera es mas nueva. */
 function esMasNueva(candidata: string, actual: string): boolean {
@@ -37,14 +40,18 @@ export function useUpdateCheck(): { versionNueva: string | null } {
     let vivo = true
     void (async () => {
       try {
-        const res = await fetch(MANIFEST_URL, { cache: 'no-store' })
-        if (!res.ok) return
-        const manifest = (await res.json()) as Manifest
-        if (vivo && esMasNueva(manifest.version, __APP_VERSION__)) {
-          setVersionNueva(manifest.version)
+        const supabase = await getSupabase()
+        const { data, error } = await supabase
+          .from('app_meta')
+          .select('value')
+          .eq('key', 'latest_version')
+          .maybeSingle()
+        if (error || !data) return
+        if (vivo && esMasNueva(data.value, __APP_VERSION__)) {
+          setVersionNueva(data.value)
         }
       } catch {
-        // Sin red o sin GitHub a mano: no pasa nada, se revisa la proxima vez.
+        // Sin red o sin sesion: no pasa nada, se revisa la proxima vez.
       }
     })()
     return () => {
