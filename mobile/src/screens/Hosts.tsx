@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { createRelay, type RemoteHost } from '@/lib/relay'
+import { useEffect, useRef, useState } from 'react'
+import { createRelay, type Relay, type RemoteHost } from '@/lib/relay'
 import { getSupabase } from '@/lib/supabase'
 import type { ChatTarget } from '../App'
 
@@ -42,6 +42,9 @@ const COMO_VA: Record<string, string> = {
 export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
   const [hosts, setHosts] = useState<RemoteHost[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /** La ruta que se acaba de pedir abrir o cerrar, mientras se confirma. */
+  const [pendiente, setPendiente] = useState<string | null>(null)
+  const relayRef = useRef<Relay | null>(null)
 
   useEffect(() => {
     let soltar: (() => void) | null = null
@@ -50,11 +53,13 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
     void (async () => {
       try {
         const relay = createRelay(await getSupabase())
+        relayRef.current = relay
         const lista = await relay.listHosts()
         if (!vivo) return
         setHosts(lista)
         soltar = relay.onHostChange((host) => {
           setHosts((previa) => [host, ...(previa ?? []).filter((h) => h.id !== host.id)])
+          setPendiente(null)
         })
       } catch (e) {
         if (vivo) setError(e instanceof Error ? e.message : String(e))
@@ -66,6 +71,26 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
       soltar?.()
     }
   }, [])
+
+  /**
+   * Pide abrir o cerrar una carpeta.
+   *
+   * No se ejecuta aqui: se deja el pedido para que el PC lo recoja y decida.
+   * Es la misma orden que escribirle a un agente, solo que esta la atiende el
+   * workspace en vez de una sesion.
+   */
+  const pedir = async (host: RemoteHost, path: string, kind: 'open_project' | 'close_project') => {
+    const relay = relayRef.current
+    if (!relay) return
+    setPendiente(path)
+    setError(null)
+    try {
+      await relay.sendInput(host.id, 'workspace', path, kind)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+      setPendiente(null)
+    }
+  }
 
   if (error) return <p className="error">{error}</p>
   if (!hosts) return <p className="empty">Buscando tus equipos…</p>
@@ -84,6 +109,7 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
     <>
       {hosts.map((host) => {
         const proyectos = host.state?.projects ?? []
+        const cerradas = host.state?.closedProjects ?? []
         const enLinea = estaRealmenteEnLinea(host)
         return (
           <section className="card" key={host.id}>
@@ -101,7 +127,18 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
 
             {proyectos.map((proyecto) => (
               <div key={proyecto.path}>
-                <p className="group">{proyecto.name}</p>
+                <div className="group-row">
+                  <p className="group">{proyecto.name}</p>
+                  <button
+                    type="button"
+                    className="group__cerrar"
+                    disabled={!enLinea || pendiente === proyecto.path}
+                    title="Cerrar esta carpeta"
+                    onClick={() => void pedir(host, proyecto.path, 'close_project')}
+                  >
+                    ✕
+                  </button>
+                </div>
                 {proyecto.agents.length === 0 && (
                   <p className="empty">Sin agentes en este proyecto.</p>
                 )}
@@ -131,6 +168,28 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
                 ))}
               </div>
             ))}
+
+            {cerradas.length > 0 && (
+              <div className="cerradas">
+                <p className="group">Otras carpetas</p>
+                {cerradas.map((c) => (
+                  <button
+                    type="button"
+                    className="row"
+                    key={c.path}
+                    disabled={!enLinea || pendiente === c.path}
+                    onClick={() => void pedir(host, c.path, 'open_project')}
+                  >
+                    <span className="row__text">
+                      <span className="row__title">{c.name}</span>
+                    </span>
+                    <span className="row__hint">
+                      {pendiente === c.path ? 'abriendo…' : 'abrir'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </section>
         )
       })}

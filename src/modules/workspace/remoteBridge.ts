@@ -110,6 +110,15 @@ export interface BridgePort {
   subscribe: (fn: () => void) => () => void
   /** Un fallo que el usuario tiene que ver. Nunca se traga en silencio. */
   onError: (mensaje: string) => void
+  /**
+   * Abre o cierra una pestana de proyecto, a peticion del movil.
+   *
+   * Nunca lanza un agente: abrir una carpeta solo la deja lista para que
+   * alguien, desde el propio PC, decida meterle un CLI. Cerrar mata los
+   * agentes que tuviera -misma regla que cerrar la pestana a mano.
+   */
+  openProject: (path: string) => void
+  closeProject: (path: string) => void
 }
 
 interface Vivo {
@@ -265,6 +274,30 @@ async function vaciarCola(estado: Vivo) {
  */
 async function aplicar(estado: Vivo, msg: InputMessage): Promise<void> {
   if (msg.applied_at) return
+
+  // Ordenes de workspace: no tocan ninguna sesion, asi que se atienden aparte
+  // y no pasan por la comprobacion de sessionId de aqui abajo.
+  if (msg.kind === 'open_project' || msg.kind === 'close_project') {
+    // Mismo principio que con las sesiones: una ruta inventada no hace nada,
+    // ni abre ni cierra, en vez de intentarlo a ciegas.
+    const foto = estado.puerto.getSnapshot()
+    const conocida =
+      msg.kind === 'open_project'
+        ? foto.closedProjects.some((p) => p.path === msg.body)
+        : foto.projects.some((p) => p.path === msg.body)
+    if (conocida) {
+      try {
+        if (msg.kind === 'open_project') estado.puerto.openProject(msg.body)
+        else estado.puerto.closeProject(msg.body)
+      } catch (e) {
+        estado.puerto.onError(
+          `No se pudo ${msg.kind === 'open_project' ? 'abrir' : 'cerrar'} la carpeta: ${String(e)}`,
+        )
+      }
+    }
+    await estado.relay.markApplied([msg.id]).catch(() => {})
+    return
+  }
 
   const existe = estado.puerto
     .getSnapshot()

@@ -46,6 +46,15 @@ export interface RemoteSnapshot {
   version: 1
   projects: RemoteProject[]
   activePath: string | null
+  /**
+   * Carpetas que Oruka conoce pero no tiene abiertas ahora mismo.
+   *
+   * El movil las necesita para poder pedir "abre esta", pero solo hasta ahi:
+   * abrir o cerrar una pestana no ejecuta nada, es solo navegacion. Lanzar un
+   * agente nuevo desde el telefono es justo lo que esta decision de diseño
+   * evita -ver "El movil nunca ejecuta nada" en ESTADO.md.
+   */
+  closedProjects: { path: string; name: string }[]
 }
 
 /** Un PC que se ofrece como mando a distancia. */
@@ -66,16 +75,18 @@ export interface OutputChunk {
 }
 
 /**
- * Lo que el movil quiere meter en una sesion.
+ * Lo que el movil quiere meter en una sesion, o pedirle al workspace.
  *
  * `text` es una frase, que se escribe y se envia. `key` es una tecla suelta
- * (escape, interrumpir). Se distinguen porque tratar una tecla como una frase
- * deja al agente esperando un enter que nunca llega.
+ * (escape, interrumpir). `open_project`/`close_project` no tocan ninguna
+ * sesion -van con `session_id: 'workspace'` y la ruta en `body`- y son las
+ * unicas dos ordenes de "workspace" que el movil puede dar: nunca lanzan un
+ * agente, solo cambian que pestana esta abierta.
  */
 export interface InputMessage {
   id: string
   session_id: string
-  kind: 'text' | 'key'
+  kind: 'text' | 'key' | 'open_project' | 'close_project'
   body: string
   created_at: string
   applied_at: string | null

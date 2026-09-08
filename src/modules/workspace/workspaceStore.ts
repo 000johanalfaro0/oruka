@@ -195,7 +195,7 @@ function dedupe(list: ProjectEntry[]): ProjectEntry[] {
 
 /** La foto que se publica: proyectos, agentes y que esta haciendo cada uno. */
 function snapshot(): RemoteSnapshot {
-  const { open, activePath, actividad } = useWorkspaceStore.getState()
+  const { open, discovered, activePath, actividad } = useWorkspaceStore.getState()
   return {
     version: 1,
     activePath,
@@ -209,6 +209,10 @@ function snapshot(): RemoteSnapshot {
         actividad: actividad[a.sessionId] ?? 'esperando',
       })),
     })),
+    // Lo que el movil puede pedir abrir: descubierto, pero no abierto ya.
+    closedProjects: discovered
+      .filter((d) => !open.some((p) => p.path === d.path))
+      .map((d) => ({ path: d.path, name: d.name })),
   }
 }
 
@@ -225,7 +229,9 @@ function firma(foto: RemoteSnapshot): string {
     '|' +
     foto.projects
       .map((p) => p.path + ':' + p.agents.map((a) => a.sessionId + a.actividad).join(','))
-      .join(';')
+      .join(';') +
+    '|' +
+    foto.closedProjects.map((p) => p.path).join(',')
   )
 }
 
@@ -259,6 +265,8 @@ const puerto: BridgePort = {
     })
   },
   onError: (mensaje) => useWorkspaceStore.setState({ remoteError: mensaje }),
+  openProject: (path) => useWorkspaceStore.getState().openProject(path),
+  closeProject: (path) => void useWorkspaceStore.getState().closeProject(path),
 }
 
 const STORAGE_KEY = 'oruka.workspace'

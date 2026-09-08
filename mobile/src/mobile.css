@@ -112,6 +112,10 @@ textarea {
 
 .body {
   flex: 1;
+  /* Sin esto, un flex hijo no se encoge por debajo de lo que mide su
+     contenido: una lista larga de ideas empujaria el compositor de abajo
+     fuera de la pantalla en vez de scrollear ella sola. */
+  min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding: 12px;
@@ -236,6 +240,26 @@ textarea {
   padding: 10px 14px 4px;
   color: var(--fg-dim);
   font-size: var(--fs-xs);
+}
+
+.group-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.group__cerrar {
+  margin-right: 10px;
+  padding: 6px 10px;
+  color: var(--fg-dim);
+}
+
+.group__cerrar:disabled {
+  opacity: 0.4;
+}
+
+.cerradas {
+  border-top: 1px solid var(--border);
 }
 
 /* Fila pulsable. 52px de alto: por debajo de eso se falla al tocar. */
@@ -390,6 +414,7 @@ textarea {
 /* Texto plano, no una terminal. Los escapes ya se quitaron en el PC. */
 .chat__log {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   margin: 0;
