@@ -1,6 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createIdea, listIdeas, listProjects } from '@/modules/ideas/repository'
+import { fromImage } from '@/modules/ideas/ai'
 import type { Idea, Project } from '@/modules/ideas/types'
+
+/** El archivo tal cual, sin el "data:image/...;base64," de delante. */
+function soloBase64(dataUrl: string): string {
+  const coma = dataUrl.indexOf(',')
+  return coma === -1 ? dataUrl : dataUrl.slice(coma + 1)
+}
+
+function leerComoDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const lector = new FileReader()
+    lector.onload = () => resolve(String(lector.result))
+    lector.onerror = () => reject(new Error('No se pudo leer la imagen.'))
+    lector.readAsDataURL(file)
+  })
+}
 
 /**
  * Las ideas, en el telefono.
@@ -34,19 +50,14 @@ export function Ideas() {
   if (proyectos.length === 0) return <p className="empty">Todavía no tienes proyectos.</p>
 
   return (
-    <section className="card">
+    <div className="idea-grid">
       {proyectos.map((p) => (
-        <button type="button" className="row" key={p.id} onClick={() => setAbierto(p)}>
-          <span className="row__text">
-            <span className="row__title">{p.title}</span>
-            {p.description && <span className="row__hint">{p.description}</span>}
-          </span>
-          <span className="row__chevron" aria-hidden="true">
-            ›
-          </span>
+        <button type="button" className="idea-card" key={p.id} onClick={() => setAbierto(p)}>
+          <span className="idea-card__title">{p.title}</span>
+          {p.description && <span className="idea-card__desc">{p.description}</span>}
         </button>
       ))}
-    </section>
+    </div>
   )
 }
 
@@ -55,7 +66,11 @@ function Detalle({ proyecto, onVolver }: { proyecto: Project; onVolver: () => vo
   const [ideas, setIdeas] = useState<Idea[] | null>(null)
   const [texto, setTexto] = useState('')
   const [guardando, setGuardando] = useState(false)
+  const [transcribiendo, setTranscribiendo] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Si lo que hay escrito vino de una foto, para que se guarde con su tipo. */
+  const [esTranscripcion, setEsTranscripcion] = useState(false)
+  const fotoRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let vivo = true
@@ -78,13 +93,40 @@ function Detalle({ proyecto, onVolver }: { proyecto: Project; onVolver: () => vo
     setError(null)
     try {
       // Puede devolver varias: la base corta las ideas muy largas en trozos.
-      const nuevas = await createIdea(proyecto.id, contenido)
+      const nuevas = await createIdea(
+        proyecto.id,
+        contenido,
+        esTranscripcion ? { type: 'image_transcription', source_label: 'foto' } : undefined,
+      )
       setIdeas((previas) => [...(previas ?? []), ...nuevas])
       setTexto('')
+      setEsTranscripcion(false)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setGuardando(false)
+    }
+  }
+
+  /**
+   * Foto de un cuaderno (o de lo que sea) a texto, con IA.
+   *
+   * No se guarda sola: se deja escrita en el mismo cuadro donde se apunta
+   * una idea a mano, para que la persona la revise -una IA leyendo letra
+   * apretada se equivoca- antes de darle a "Añadir".
+   */
+  const transcribirFoto = async (file: File) => {
+    setTranscribiendo(true)
+    setError(null)
+    try {
+      const dataUrl = await leerComoDataUrl(file)
+      const texto = await fromImage('transcribe_image', file.type, soloBase64(dataUrl))
+      setTexto(texto)
+      setEsTranscripcion(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setTranscribiendo(false)
     }
   }
 
@@ -115,11 +157,37 @@ function Detalle({ proyecto, onVolver }: { proyecto: Project; onVolver: () => vo
         )}
       </div>
 
+      {transcribiendo && <p className="empty">Leyendo la foto…</p>}
+
       <div className="composer">
+        <input
+          ref={fotoRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            e.target.value = ''
+            if (file) void transcribirFoto(file)
+          }}
+        />
+        <button
+          type="button"
+          className="composer__foto"
+          disabled={transcribiendo}
+          title="Transcribir una foto con IA"
+          onClick={() => fotoRef.current?.click()}
+        >
+          📷
+        </button>
         <textarea
           value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          placeholder="Apunta una idea…"
+          onChange={(e) => {
+            setTexto(e.target.value)
+            setEsTranscripcion(false)
+          }}
+          placeholder="Apunta una idea, o transcribe una foto…"
           rows={1}
         />
         <button

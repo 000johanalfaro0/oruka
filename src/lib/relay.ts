@@ -112,6 +112,14 @@ export function createRelay(supabase: SupabaseClient) {
      * El id se guarda fuera de aqui, en el almacen del escritorio: si cada
      * arranque creara un equipo nuevo, la lista del movil se llenaria de PCs
      * fantasma con el mismo nombre.
+     *
+     * Si el id recordado se perdio (perfil nuevo, recarga en caliente durante
+     * desarrollo, o el usuario lo borro desde el movil), no se inserta a
+     * ciegas: primero se busca una fila de este mismo usuario con este mismo
+     * nombre y se reusa. Solo si de verdad no hay ninguna se crea una nueva.
+     * Sin este paso, dos arranques que pierden el id a la vez -la carrera que
+     * paso durante el desarrollo de esto mismo- dejan equipos fantasma
+     * duplicados que nadie apaga nunca.
      */
     async registerHost(name: string, existingId: string | null): Promise<string> {
       const user_id = await requireUser()
@@ -125,8 +133,26 @@ export function createRelay(supabase: SupabaseClient) {
           .maybeSingle()
         if (error) throw new Error(error.message)
         // Si la fila ya no existe (el usuario la borro desde el movil), se cae
-        // al alta de abajo en vez de fallar.
+        // al resto en vez de fallar.
         if (data) return data.id as string
+      }
+
+      const existente = await supabase
+        .from('remote_hosts')
+        .select('id')
+        .eq('user_id', user_id)
+        .eq('name', name)
+        .order('last_seen', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (existente.error) throw new Error(existente.error.message)
+      if (existente.data) {
+        const { error } = await supabase
+          .from('remote_hosts')
+          .update({ last_seen: new Date().toISOString() })
+          .eq('id', existente.data.id)
+        if (error) throw new Error(error.message)
+        return existente.data.id as string
       }
 
       const { data, error } = await supabase

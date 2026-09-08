@@ -13,6 +13,19 @@ function hace(iso: string): string {
   return `hace ${Math.floor(horas / 24)} d`
 }
 
+/**
+ * Cuanto tiempo sin noticias hace que un equipo "en linea" ya no se cree.
+ *
+ * El escritorio apaga la bandera al cerrarse bien, pero un cierre a la brava
+ * -se acaba la bateria, lo mata el sistema- nunca llega a avisar. Sin este
+ * limite, ese equipo se veria "conectado" para siempre.
+ */
+const SE_CREE_VIVO_MS = 2 * 60 * 1000
+
+function estaRealmenteEnLinea(host: RemoteHost): boolean {
+  return host.online && Date.now() - new Date(host.last_seen).getTime() < SE_CREE_VIVO_MS
+}
+
 const COMO_VA: Record<string, string> = {
   trabajando: 'escribiendo',
   esperando: 'listo',
@@ -71,13 +84,14 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
     <>
       {hosts.map((host) => {
         const proyectos = host.state?.projects ?? []
+        const enLinea = estaRealmenteEnLinea(host)
         return (
           <section className="card" key={host.id}>
             <div className="card__head">
-              <span className={`dot${host.online ? ' dot--online' : ''}`} aria-hidden="true" />
+              <span className={`dot${enLinea ? ' dot--online' : ''}`} aria-hidden="true" />
               <span className="card__name">{host.name}</span>
               <span className="card__meta">
-                {host.online ? 'conectado' : `visto ${hace(host.last_seen)}`}
+                {enLinea ? 'conectado' : `visto ${hace(host.last_seen)}`}
               </span>
             </div>
 
