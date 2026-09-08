@@ -72,16 +72,30 @@ const ESC_SIMPLE = new RegExp(ESC + '[@-Z\\\\-_]', 'g')
  * camino que ya funciona en el escritorio, donde xterm.js **si** los necesita.
  *
  * Del resto de caracteres se guardan el tabulador, el salto de linea y todo lo
- * imprimible. Se cae el retorno de carro, que un agente usa para repintar la
- * misma linea y que sin terminal detras se leeria como un salto falso.
+ * imprimible. El retorno de carro suelto (sin el salto de linea detras) no se
+ * borra sin mas: un agente lo usa para repintar la linea actual -un spinner,
+ * texto que llega palabra a palabra- y borrarlo a secas pega cada repintado
+ * detras del anterior en vez de reemplazarlo, dejando frases partidas y
+ * repetidas. Aqui se interpreta: vuelve al principio de la linea en curso, que
+ * es lo que un retorno de carro significa de verdad.
  */
 export function limpiar(texto: string): string {
   const sinEscapes = texto.replace(CSI, '').replace(OSC, '').replace(ESC_SIMPLE, '')
   let salida = ''
-  for (const ch of sinEscapes) {
-    const codigo = ch.charCodeAt(0)
-    const util = codigo === 9 || codigo === 10 || (codigo >= 32 && codigo !== 127)
-    if (util) salida += ch
+  let inicioLinea = 0
+  for (let i = 0; i < sinEscapes.length; i++) {
+    const codigo = sinEscapes.charCodeAt(i)
+    if (codigo === 13) {
+      // \r\n de Windows: retorno normal, no repintado. Se deja pasar.
+      if (sinEscapes[i + 1] !== '\n') salida = salida.slice(0, inicioLinea)
+      continue
+    }
+    if (codigo === 10) {
+      salida += '\n'
+      inicioLinea = salida.length
+      continue
+    }
+    if (codigo === 9 || (codigo >= 32 && codigo !== 127)) salida += sinEscapes[i]
   }
   return salida
 }
