@@ -220,7 +220,7 @@ button {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  padding: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
 }
 
 /* Ideas en cuadritos, dos columnas, igual que en el escritorio. */
@@ -299,7 +299,7 @@ button {
  * contiene). Los chats de adentro son filas simples, no una burbuja cada
  * uno -eso apilaba tres capas de margen y sobraba espacio por todos lados. */
 .card > div:not(.card__head):not(.cerradas) {
-  margin: var(--sp-2);
+  margin: 0 var(--sp-2) var(--sp-2);
   border-radius: var(--radius);
   background: var(--bg-input);
   overflow: hidden;
@@ -316,7 +316,7 @@ button {
 .group {
   display: flex;
   align-items: center;
-  padding: var(--sp-3) var(--sp-4);
+  padding: var(--sp-2) var(--sp-4);
   color: var(--fg);
   font-size: var(--fs-sm);
   font-weight: 700;
