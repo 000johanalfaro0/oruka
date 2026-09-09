@@ -195,7 +195,7 @@ function dedupe(list: ProjectEntry[]): ProjectEntry[] {
 
 /** La foto que se publica: proyectos, agentes y que esta haciendo cada uno. */
 function snapshot(): RemoteSnapshot {
-  const { open, discovered, activePath, actividad } = useWorkspaceStore.getState()
+  const { open, discovered, activePath, actividad, clis } = useWorkspaceStore.getState()
   return {
     version: 1,
     activePath,
@@ -213,6 +213,9 @@ function snapshot(): RemoteSnapshot {
     closedProjects: discovered
       .filter((d) => !open.some((p) => p.path === d.path))
       .map((d) => ({ path: d.path, name: d.name })),
+    // Con que puede pedir lanzar un agente: solo los que de verdad estan
+    // instalados en esta maquina, nunca la lista completa de adaptadores.
+    clis: clis.filter((c) => c.found).map((c) => ({ id: c.id, name: c.name })),
   }
 }
 
@@ -231,7 +234,9 @@ function firma(foto: RemoteSnapshot): string {
       .map((p) => p.path + ':' + p.agents.map((a) => a.sessionId + a.actividad).join(','))
       .join(';') +
     '|' +
-    foto.closedProjects.map((p) => p.path).join(',')
+    foto.closedProjects.map((p) => p.path).join(',') +
+    '|' +
+    foto.clis.map((c) => c.id).join(',')
   )
 }
 
@@ -267,6 +272,15 @@ const puerto: BridgePort = {
   onError: (mensaje) => useWorkspaceStore.setState({ remoteError: mensaje }),
   openProject: (path) => useWorkspaceStore.getState().openProject(path),
   closeProject: (path) => void useWorkspaceStore.getState().closeProject(path),
+  launchAgent: (path, cliId) => {
+    const { openProject: abrir, addAgent, clis } = useWorkspaceStore.getState()
+    // El primer modo de la lista es siempre el seguro (nunca "yolo") -mismo
+    // camino que ya usan GitHub y Sesiones para lanzar un agente sin pedir
+    // uno en concreto.
+    const modo = clis.find((c) => c.id === cliId)?.modes[0] ?? ''
+    abrir(path)
+    addAgent(path, cliId, modo)
+  },
 }
 
 const STORAGE_KEY = 'oruka.workspace'

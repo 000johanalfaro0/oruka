@@ -10,9 +10,9 @@ import { getSupabase } from '@/lib/supabase'
  * sitio de la app donde una orden de fuera acaba entrando en un PTY, asi que
  * todo lo que hace se resume en dos frases:
  *
- * 1. Solo escribe en sesiones que existen ahora mismo en este Workspace. Un id
- *    inventado no abre nada ni lanza nada: desde aqui no hay camino a
- *    `agent_spawn`.
+ * 1. Solo escribe en sesiones que existen ahora mismo en este Workspace. Una
+ *    ruta o un CLI inventados no abren ni lanzan nada -y el movil puede pedir
+ *    lanzar un agente, pero nunca elige el modo: siempre es el seguro.
  * 2. Solo funciona con el interruptor puesto, y el interruptor viene apagado.
  *
  * Vive FUERA de React. El shell desmonta el modulo que no esta activo, asi que
@@ -113,12 +113,19 @@ export interface BridgePort {
   /**
    * Abre o cierra una pestana de proyecto, a peticion del movil.
    *
-   * Nunca lanza un agente: abrir una carpeta solo la deja lista para que
-   * alguien, desde el propio PC, decida meterle un CLI. Cerrar mata los
-   * agentes que tuviera -misma regla que cerrar la pestana a mano.
+   * Abrir una carpeta la deja lista; con `launchAgent` se le puede meter un
+   * CLI encima, en el mismo pedido o despues. Cerrar mata los agentes que
+   * tuviera -misma regla que cerrar la pestana a mano.
    */
   openProject: (path: string) => void
   closeProject: (path: string) => void
+  /**
+   * Lanza un CLI en un proyecto ya abierto, a peticion del movil.
+   *
+   * Siempre en el modo seguro de ese CLI -nunca "yolo"-: quien implementa
+   * esto no recibe el modo del movil, asi que no hay forma de pedirlo.
+   */
+  launchAgent: (path: string, cliId: string) => void
 }
 
 interface Vivo {
@@ -294,6 +301,26 @@ async function aplicar(estado: Vivo, msg: InputMessage): Promise<void> {
           `No se pudo ${msg.kind === 'open_project' ? 'abrir' : 'cerrar'} la carpeta: ${String(e)}`,
         )
       }
+    }
+    await estado.relay.markApplied([msg.id]).catch(() => {})
+    return
+  }
+
+  if (msg.kind === 'launch_agent') {
+    // Ni la ruta ni el CLI se confian a ciegas: los dos tienen que estar ya
+    // en la foto que este mismo Workspace publico -un proyecto abierto de
+    // verdad y un CLI instalado de verdad. El modo no viene en el mensaje:
+    // no hay forma de que el movil pida "yolo" aunque quisiera.
+    const foto = estado.puerto.getSnapshot()
+    try {
+      const { path, cli } = JSON.parse(msg.body) as { path?: unknown; cli?: unknown }
+      const proyectoConocido = typeof path === 'string' && foto.projects.some((p) => p.path === path)
+      const cliConocido = typeof cli === 'string' && foto.clis.some((c) => c.id === cli)
+      if (proyectoConocido && cliConocido) {
+        estado.puerto.launchAgent(path as string, cli as string)
+      }
+    } catch (e) {
+      estado.puerto.onError(`No se pudo lanzar el agente: ${String(e)}`)
     }
     await estado.relay.markApplied([msg.id]).catch(() => {})
     return

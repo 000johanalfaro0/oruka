@@ -49,12 +49,19 @@ export interface RemoteSnapshot {
   /**
    * Carpetas que Oruka conoce pero no tiene abiertas ahora mismo.
    *
-   * El movil las necesita para poder pedir "abre esta", pero solo hasta ahi:
-   * abrir o cerrar una pestana no ejecuta nada, es solo navegacion. Lanzar un
-   * agente nuevo desde el telefono es justo lo que esta decision de diseño
-   * evita -ver "El movil nunca ejecuta nada" en ESTADO.md.
+   * El movil las necesita para poder pedir "abre esta". Abrir o cerrar una
+   * pestana no ejecuta nada por si solo, es solo navegacion.
    */
   closedProjects: { path: string; name: string }[]
+  /**
+   * Los CLIs que de verdad estan instalados en este equipo.
+   *
+   * El movil puede pedir lanzar uno de estos en un proyecto ya abierto -pero
+   * nunca elige el modo: el PC siempre usa el primero de la lista de modos de
+   * ese CLI, que por convencion es el seguro. Pedir "yolo" desde el telefono
+   * no es un camino que exista.
+   */
+  clis: { id: string; name: string }[]
 }
 
 /** Un PC que se ofrece como mando a distancia. */
@@ -78,15 +85,16 @@ export interface OutputChunk {
  * Lo que el movil quiere meter en una sesion, o pedirle al workspace.
  *
  * `text` es una frase, que se escribe y se envia. `key` es una tecla suelta
- * (escape, interrumpir). `open_project`/`close_project` no tocan ninguna
- * sesion -van con `session_id: 'workspace'` y la ruta en `body`- y son las
- * unicas dos ordenes de "workspace" que el movil puede dar: nunca lanzan un
- * agente, solo cambian que pestana esta abierta.
+ * (escape, interrumpir). `open_project`/`close_project`/`launch_agent` no
+ * tocan ninguna sesion -van con `session_id: 'workspace'`-, son ordenes para
+ * el workspace en si. `open_project`/`close_project` llevan la ruta en
+ * `body`; `launch_agent` lleva `{"path": "...", "cli": "..."}` como JSON, y
+ * el PC decide el modo -nunca lo manda el movil, ver `RemoteSnapshot.clis`.
  */
 export interface InputMessage {
   id: string
   session_id: string
-  kind: 'text' | 'key' | 'open_project' | 'close_project'
+  kind: 'text' | 'key' | 'open_project' | 'close_project' | 'launch_agent'
   body: string
   created_at: string
   applied_at: string | null

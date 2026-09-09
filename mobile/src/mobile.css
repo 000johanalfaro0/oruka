@@ -333,13 +333,27 @@ button {
   justify-content: space-between;
 }
 
+.group__acciones {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-right: var(--sp-3);
+}
+
+/* Los CLIs para elegir al lanzar un agente nuevo, como las teclas del chat. */
+.cli-elegir {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4) var(--sp-2);
+}
+
 .group__cerrar {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 30px;
   height: 30px;
-  margin-right: var(--sp-3);
   border-radius: var(--radius-pill);
   background: var(--bg-chrome);
   border: none;

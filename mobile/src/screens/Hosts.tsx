@@ -36,6 +36,8 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
   const [error, setError] = useState<string | null>(null)
   /** La ruta que se acaba de pedir cerrar, mientras se confirma. */
   const [pendiente, setPendiente] = useState<string | null>(null)
+  /** La carpeta que tiene abierto el selector de "lanzar un agente". */
+  const [eligiendoCli, setEligiendoCli] = useState<string | null>(null)
   const relayRef = useRef<Relay | null>(null)
 
   useEffect(() => {
@@ -84,6 +86,24 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
     }
   }
 
+  /**
+   * Pide lanzar un CLI en una carpeta ya abierta.
+   *
+   * El modo no se elige aqui ni se manda: el PC siempre usa el seguro. Este
+   * mensaje solo dice "esta carpeta, este CLI", nada mas.
+   */
+  const lanzar = async (host: RemoteHost, path: string, cliId: string) => {
+    const relay = relayRef.current
+    if (!relay) return
+    setEligiendoCli(null)
+    setError(null)
+    try {
+      await relay.sendInput(host.id, 'workspace', JSON.stringify({ path, cli: cliId }), 'launch_agent')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
   if (error) return <p className="error">{error}</p>
   if (!hosts) return <p className="empty">Buscando tus equipos…</p>
 
@@ -116,20 +136,48 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
               <p className="empty">Sin proyectos abiertos en este equipo.</p>
             )}
 
-            {proyectos.map((proyecto) => (
+            {proyectos.map((proyecto) => {
+              const clis = host.state?.clis ?? []
+              const eligiendo = eligiendoCli === proyecto.path
+              return (
               <div key={proyecto.path}>
                 <div className="group-row">
                   <p className="group">{proyecto.name}</p>
-                  <button
-                    type="button"
-                    className="group__cerrar"
-                    disabled={!enLinea || pendiente === proyecto.path}
-                    title="Cerrar esta carpeta"
-                    onClick={() => void cerrar(host, proyecto.path)}
-                  >
-                    ✕
-                  </button>
+                  <div className="group__acciones">
+                    <button
+                      type="button"
+                      className="group__cerrar"
+                      disabled={!enLinea || clis.length === 0}
+                      title="Lanzar un agente en esta carpeta"
+                      onClick={() => setEligiendoCli(eligiendo ? null : proyecto.path)}
+                    >
+                      +
+                    </button>
+                    <button
+                      type="button"
+                      className="group__cerrar"
+                      disabled={!enLinea || pendiente === proyecto.path}
+                      title="Cerrar esta carpeta"
+                      onClick={() => void cerrar(host, proyecto.path)}
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
+                {eligiendo && (
+                  <div className="cli-elegir">
+                    {clis.map((c) => (
+                      <button
+                        type="button"
+                        key={c.id}
+                        className="key"
+                        onClick={() => void lanzar(host, proyecto.path, c.id)}
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {proyecto.agents.length === 0 && (
                   <p className="empty">Sin agentes en este proyecto.</p>
                 )}
@@ -158,7 +206,8 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
                   </button>
                 ))}
               </div>
-            ))}
+              )
+            })}
           </section>
         )
       })}
