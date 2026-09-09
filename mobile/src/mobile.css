@@ -27,11 +27,12 @@
   --sp-5: 24px;
   --sp-6: 32px;
 
-  /* Un poco mas redondeado que el escritorio -un dedo perdona menos las
-     esquinas vivas que un cursor- pero la misma familia, no otra. */
-  --radius-sm: 6px;
-  --radius: 8px;
-  --radius-lg: 12px;
+  /* Capas de fondo, no bordes de color: la jerarquia se lee por el contraste
+     entre un fondo y el siguiente, con esquinas bien redondeadas -como el
+     resto de las apps de Claude- en vez de lineas o acentos. */
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 20px;
   --radius-pill: 999px;
 
   /* Anillo de foco, para teclado/lector de pantalla. No es una sombra
@@ -211,7 +212,6 @@ button {
 /* --------------------------------------------------------------------- */
 
 .card {
-  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--bg-elevated);
   margin-bottom: var(--sp-4);
@@ -223,7 +223,6 @@ button {
   align-items: center;
   gap: var(--sp-2);
   padding: var(--sp-4);
-  border-bottom: 1px solid var(--border);
 }
 
 /* Ideas en cuadritos, dos columnas, igual que en el escritorio. */
@@ -240,8 +239,6 @@ button {
   min-height: 92px;
   padding: var(--sp-3) var(--sp-4);
   text-align: left;
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--accent);
   border-radius: var(--radius);
   background: var(--bg-elevated);
   color: var(--fg);
@@ -299,35 +296,38 @@ button {
   background: var(--state-idle);
 }
 
-/* Cada carpeta abierta y sus chats son un solo bloque -un borde de color a la
- * izquierda que arranca en el nombre y sigue hasta el ultimo chat- y cada
- * chat va con una sangria clara respecto a la carpeta, para que se lea como
- * "esto es hijo de eso" y no como dos listas al mismo nivel. */
+/* Cada carpeta abierta y sus chats son un solo bloque: la carpeta es la
+ * tarjeta madre (un fondo propio, mas claro que la tarjeta del equipo que la
+ * contiene) y cada chat es una burbuja anidada adentro, con su propio fondo
+ * -un paso mas de contraste- en vez de una linea de color. Es jerarquia por
+ * capas de fondo, no por acentos. */
 .card > div:not(.card__head):not(.cerradas) {
   margin: var(--sp-3);
-  border-radius: var(--radius-sm);
+  padding-bottom: var(--sp-2);
+  border-radius: var(--radius);
   background: var(--bg-input);
-  border-left: 2px solid var(--accent);
   overflow: hidden;
 }
 
 .card > div:not(.card__head):not(.cerradas) .row {
-  padding-left: calc(var(--sp-4) * 2);
+  margin: 0 var(--sp-2) var(--sp-2);
+  width: auto;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-chrome);
+}
+
+.card > div:not(.card__head):not(.cerradas) .row:active {
+  background: var(--hover);
 }
 
 .group {
   display: flex;
   align-items: center;
-  padding: var(--sp-3) var(--sp-4);
+  padding: var(--sp-3) var(--sp-4) var(--sp-2);
   color: var(--fg);
   font-size: var(--fs-sm);
   font-weight: 700;
-}
-
-.group::before {
-  content: '\1F4C1';
-  margin-right: var(--sp-2);
-  font-size: var(--fs-sm);
 }
 
 .group-row {
@@ -344,8 +344,8 @@ button {
   height: 30px;
   margin-right: var(--sp-3);
   border-radius: var(--radius-pill);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-strong);
+  background: var(--bg-chrome);
+  border: none;
   color: var(--fg-dim);
   font-size: var(--fs-sm);
   line-height: 1;
@@ -365,10 +365,17 @@ button {
  * que hoy no esta abierta- y tiene que leerse como tal. */
 .cerradas {
   margin: var(--sp-4) var(--sp-3) var(--sp-3);
-  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  overflow: hidden;
+}
+
+.cerradas .row {
+  margin: 0 var(--sp-2) var(--sp-2);
+  width: auto;
+  border: none;
   border-radius: var(--radius-sm);
   background: var(--bg-chrome);
-  overflow: hidden;
 }
 
 .cerradas__toggle {
@@ -693,14 +700,12 @@ button {
 
 .idea {
   padding: var(--sp-4);
-  border-top: 1px solid var(--border);
+  margin: var(--sp-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-chrome);
   line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-
-.idea:first-child {
-  border-top: none;
 }
 
 .idea__date {

@@ -2,8 +2,11 @@ package com.jojan.oruka;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
+import android.webkit.DownloadListener;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -64,6 +67,17 @@ public class MainActivity extends Activity {
             peticion.grant(peticion.getResources());
           }
         });
+      }
+    });
+
+    // El WebView no sabe bajar archivos: sin esto, tocar el enlace del APK
+    // nuevo intenta abrirlo como si fuera una pagina y no pasa nada, sin
+    // avisar del fallo. Se lo pasa al navegador del sistema, que si sabe.
+    web.setDownloadListener(new DownloadListener() {
+      @Override
+      public void onDownloadStart(String url, String userAgent, String contentDisposition,
+          String mimetype, long contentLength) {
+        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
       }
     });
 
