@@ -113,6 +113,7 @@ button {
   align-items: center;
   gap: var(--sp-3);
   padding: var(--sp-3) var(--sp-4);
+  padding-top: calc(var(--sp-3) + env(safe-area-inset-top));
   background: var(--bg-chrome);
   border-bottom: 1px solid var(--border);
 }
@@ -178,6 +179,10 @@ button {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding: var(--sp-4);
+  /* Las pestanas se mudaron arriba: ya no hay nada abajo que reserve el
+     hueco de los botones del sistema, asi que el ultimo tramo de la lista
+     lo hace este relleno. */
+  padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom));
 }
 
 .tabs {
@@ -604,6 +609,7 @@ button {
   align-items: flex-end;
   gap: var(--sp-2);
   padding: var(--sp-3);
+  padding-bottom: calc(var(--sp-3) + env(safe-area-inset-bottom));
   background: var(--bg-chrome);
   border-top: 1px solid var(--border);
 }

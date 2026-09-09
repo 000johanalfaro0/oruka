@@ -17,10 +17,6 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 import androidx.core.content.FileProvider;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.webkit.WebViewAssetLoader;
 
 import java.io.File;
@@ -131,16 +127,6 @@ public class MainActivity extends Activity {
           String mimetype, long contentLength) {
         startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
       }
-    });
-
-    // Android 15 obliga a dibujar detras de la barra de estado y de los
-    // botones de navegacion -antes el sistema le dejaba el hueco solo, ahora
-    // hay que reservarlo a mano o la parte de abajo de la app queda tapada.
-    WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-    ViewCompat.setOnApplyWindowInsetsListener(web, (vista, insets) -> {
-      Insets barras = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-      vista.setPadding(barras.left, barras.top, barras.right, barras.bottom);
-      return insets;
     });
 
     setContentView(web);
