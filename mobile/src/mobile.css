@@ -321,16 +321,19 @@ button {
 .group {
   display: flex;
   align-items: center;
-  padding: var(--sp-1) var(--sp-4);
+  padding: var(--sp-2) var(--sp-4);
   color: var(--fg);
   font-size: var(--fs-sm);
   font-weight: 700;
 }
 
+/* Cabecera de la carpeta, con su propio fondo -mas claro que el cuerpo de
+ * abajo- para que se note que es "el titulo" y todo lo de abajo le pertenece. */
 .group-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: var(--bg-elevated);
 }
 
 .group__acciones {
