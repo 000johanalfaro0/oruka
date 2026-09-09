@@ -122,10 +122,10 @@ export interface BridgePort {
   /**
    * Lanza un CLI en un proyecto ya abierto, a peticion del movil.
    *
-   * Siempre en el modo seguro de ese CLI -nunca "yolo"-: quien implementa
-   * esto no recibe el modo del movil, asi que no hay forma de pedirlo.
+   * El modo es opcional y ya llega comprobado: quien llama aqui lo valido
+   * contra `RemoteSnapshot.clis`, que nunca incluye "yolo".
    */
-  launchAgent: (path: string, cliId: string) => void
+  launchAgent: (path: string, cliId: string, mode?: string) => void
 }
 
 interface Vivo {
@@ -307,17 +307,23 @@ async function aplicar(estado: Vivo, msg: InputMessage): Promise<void> {
   }
 
   if (msg.kind === 'launch_agent') {
-    // Ni la ruta ni el CLI se confian a ciegas: los dos tienen que estar ya
-    // en la foto que este mismo Workspace publico -un proyecto abierto de
-    // verdad y un CLI instalado de verdad. El modo no viene en el mensaje:
-    // no hay forma de que el movil pida "yolo" aunque quisiera.
+    // Ni la ruta, ni el CLI, ni el modo se confian a ciegas: los tres tienen
+    // que estar ya en la foto que este mismo Workspace publico -un proyecto
+    // abierto de verdad, un CLI instalado de verdad, y un modo que de verdad
+    // este en su lista -que nunca incluye "yolo", ver `snapshot()`.
     const foto = estado.puerto.getSnapshot()
     try {
-      const { path, cli } = JSON.parse(msg.body) as { path?: unknown; cli?: unknown }
+      const { path, cli, mode } = JSON.parse(msg.body) as {
+        path?: unknown
+        cli?: unknown
+        mode?: unknown
+      }
       const proyectoConocido = typeof path === 'string' && foto.projects.some((p) => p.path === path)
-      const cliConocido = typeof cli === 'string' && foto.clis.some((c) => c.id === cli)
-      if (proyectoConocido && cliConocido) {
-        estado.puerto.launchAgent(path as string, cli as string)
+      const cliEntry = typeof cli === 'string' ? foto.clis.find((c) => c.id === cli) : undefined
+      const modoConocido =
+        typeof mode !== 'string' || !mode ? true : (cliEntry?.modes.includes(mode) ?? false)
+      if (proyectoConocido && cliEntry && modoConocido) {
+        estado.puerto.launchAgent(path as string, cliEntry.id, typeof mode === 'string' ? mode : undefined)
       }
     } catch (e) {
       estado.puerto.onError(`No se pudo lanzar el agente: ${String(e)}`)

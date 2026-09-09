@@ -54,14 +54,14 @@ export interface RemoteSnapshot {
    */
   closedProjects: { path: string; name: string }[]
   /**
-   * Los CLIs que de verdad estan instalados en este equipo.
+   * Los CLIs que de verdad estan instalados en este equipo, con sus modos.
    *
-   * El movil puede pedir lanzar uno de estos en un proyecto ya abierto -pero
-   * nunca elige el modo: el PC siempre usa el primero de la lista de modos de
-   * ese CLI, que por convencion es el seguro. Pedir "yolo" desde el telefono
-   * no es un camino que exista.
+   * El movil puede pedir lanzar uno de estos en un proyecto ya abierto, y
+   * elegir el modo -pero nunca "yolo": esa palabra no aparece en `modes` de
+   * aqui, se filtra antes de publicar la foto. Pedir "yolo" desde el telefono
+   * no es un camino que exista, aunque se inventara el mensaje a mano.
    */
-  clis: { id: string; name: string }[]
+  clis: { id: string; name: string; modes: string[] }[]
 }
 
 /** Un PC que se ofrece como mando a distancia. */
@@ -88,8 +88,9 @@ export interface OutputChunk {
  * (escape, interrumpir). `open_project`/`close_project`/`launch_agent` no
  * tocan ninguna sesion -van con `session_id: 'workspace'`-, son ordenes para
  * el workspace en si. `open_project`/`close_project` llevan la ruta en
- * `body`; `launch_agent` lleva `{"path": "...", "cli": "..."}` como JSON, y
- * el PC decide el modo -nunca lo manda el movil, ver `RemoteSnapshot.clis`.
+ * `body`; `launch_agent` lleva `{"path": "...", "cli": "...", "mode": "..."}`
+ * como JSON -`mode` es opcional y, si no esta en `RemoteSnapshot.clis` para
+ * ese CLI (que nunca incluye "yolo"), el PC usa el primero de la lista.
  */
 export interface InputMessage {
   id: string

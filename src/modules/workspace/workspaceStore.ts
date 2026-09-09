@@ -214,8 +214,11 @@ function snapshot(): RemoteSnapshot {
       .filter((d) => !open.some((p) => p.path === d.path))
       .map((d) => ({ path: d.path, name: d.name })),
     // Con que puede pedir lanzar un agente: solo los que de verdad estan
-    // instalados en esta maquina, nunca la lista completa de adaptadores.
-    clis: clis.filter((c) => c.found).map((c) => ({ id: c.id, name: c.name })),
+    // instalados en esta maquina, nunca la lista completa de adaptadores. Y
+    // sus modos, menos "yolo" -esa palabra no llega a existir para el movil.
+    clis: clis
+      .filter((c) => c.found)
+      .map((c) => ({ id: c.id, name: c.name, modes: c.modes.filter((m) => m !== 'yolo') })),
   }
 }
 
@@ -236,7 +239,7 @@ function firma(foto: RemoteSnapshot): string {
     '|' +
     foto.closedProjects.map((p) => p.path).join(',') +
     '|' +
-    foto.clis.map((c) => c.id).join(',')
+    foto.clis.map((c) => c.id + ':' + c.modes.join('+')).join(',')
   )
 }
 
@@ -272,12 +275,14 @@ const puerto: BridgePort = {
   onError: (mensaje) => useWorkspaceStore.setState({ remoteError: mensaje }),
   openProject: (path) => useWorkspaceStore.getState().openProject(path),
   closeProject: (path) => void useWorkspaceStore.getState().closeProject(path),
-  launchAgent: (path, cliId) => {
+  launchAgent: (path, cliId, modoPedido) => {
     const { openProject: abrir, addAgent, clis } = useWorkspaceStore.getState()
-    // El primer modo de la lista es siempre el seguro (nunca "yolo") -mismo
-    // camino que ya usan GitHub y Sesiones para lanzar un agente sin pedir
-    // uno en concreto.
-    const modo = clis.find((c) => c.id === cliId)?.modes[0] ?? ''
+    // "yolo" nunca esta en esta lista -se filtra al armar la foto, ver
+    // snapshot()-, asi que ni pedirlo a mano desde el mensaje lo cuela. Si el
+    // modo pedido no existe (o no vino ninguno), el primero de la lista es
+    // siempre el seguro: mismo camino que ya usan GitHub y Sesiones.
+    const modos = clis.find((c) => c.id === cliId)?.modes ?? []
+    const modo = (modoPedido && modos.includes(modoPedido) ? modoPedido : modos[0]) ?? ''
     abrir(path)
     addAgent(path, cliId, modo)
   },

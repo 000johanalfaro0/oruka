@@ -87,18 +87,23 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
   }
 
   /**
-   * Pide lanzar un CLI en una carpeta ya abierta.
+   * Pide lanzar un CLI en una carpeta ya abierta, en un modo concreto.
    *
-   * El modo no se elige aqui ni se manda: el PC siempre usa el seguro. Este
-   * mensaje solo dice "esta carpeta, este CLI", nada mas.
+   * "yolo" no es una opcion que se pueda pedir: ni siquiera aparece en la
+   * lista que manda el PC, asi que no hay boton para el.
    */
-  const lanzar = async (host: RemoteHost, path: string, cliId: string) => {
+  const lanzar = async (host: RemoteHost, path: string, cliId: string, mode: string) => {
     const relay = relayRef.current
     if (!relay) return
     setEligiendoCli(null)
     setError(null)
     try {
-      await relay.sendInput(host.id, 'workspace', JSON.stringify({ path, cli: cliId }), 'launch_agent')
+      await relay.sendInput(
+        host.id,
+        'workspace',
+        JSON.stringify({ path, cli: cliId, mode }),
+        'launch_agent',
+      )
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     }
@@ -166,16 +171,19 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
                 </div>
                 {eligiendo && (
                   <div className="cli-elegir">
-                    {clis.map((c) => (
-                      <button
-                        type="button"
-                        key={c.id}
-                        className="key"
-                        onClick={() => void lanzar(host, proyecto.path, c.id)}
-                      >
-                        {c.name}
-                      </button>
-                    ))}
+                    {clis.flatMap((c) =>
+                      (c.modes.length > 0 ? c.modes : ['']).map((modo) => (
+                        <button
+                          type="button"
+                          key={`${c.id}:${modo}`}
+                          className="key"
+                          onClick={() => void lanzar(host, proyecto.path, c.id, modo)}
+                        >
+                          {c.name}
+                          {modo && ` · ${modo.charAt(0).toUpperCase()}${modo.slice(1)}`}
+                        </button>
+                      )),
+                    )}
                   </div>
                 )}
                 {proyecto.agents.length === 0 && (
