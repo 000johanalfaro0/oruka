@@ -297,33 +297,27 @@ button {
 
 /* Cada carpeta abierta y sus chats son un solo bloque: la carpeta es la
  * tarjeta madre (un fondo propio, mas claro que la tarjeta del equipo que la
- * contiene) y cada chat es una burbuja anidada adentro, con su propio fondo
- * -un paso mas de contraste- en vez de una linea de color. Es jerarquia por
- * capas de fondo, no por acentos. */
+ * contiene). Los chats de adentro son filas simples, no una burbuja cada
+ * uno -eso apilaba tres capas de margen y sobraba espacio por todos lados. */
 .card > div:not(.card__head):not(.cerradas) {
-  margin: var(--sp-3);
-  padding-bottom: var(--sp-2);
+  margin: var(--sp-2);
   border-radius: var(--radius);
   background: var(--bg-input);
   overflow: hidden;
 }
 
 .card > div:not(.card__head):not(.cerradas) .row {
-  margin: 0 var(--sp-2) var(--sp-2);
-  width: auto;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: var(--bg-chrome);
+  border-top: 1px solid var(--border);
 }
 
-.card > div:not(.card__head):not(.cerradas) .row:active {
-  background: var(--hover);
+.card > div:not(.card__head):not(.cerradas) .row:first-of-type {
+  border-top: none;
 }
 
 .group {
   display: flex;
   align-items: center;
-  padding: var(--sp-3) var(--sp-4) var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
   color: var(--fg);
   font-size: var(--fs-sm);
   font-weight: 700;
