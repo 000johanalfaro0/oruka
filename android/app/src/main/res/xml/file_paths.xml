@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Donde puede guardar sus fotos temporales la camara, para pasarselas a la
+     pagina web sin exponer el resto del almacenamiento del telefono. -->
+<paths>
+  <cache-path name="fotos" path="fotos/" />
+</paths>

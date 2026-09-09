@@ -53,8 +53,11 @@ android {
 }
 
 dependencies {
-  // Solo esto. Sirve los archivos del paquete por https en vez de por file://,
-  // que es lo que convierte la app en un «sitio seguro» y permite usar la
-  // camara y guardar la sesion.
+  // Sirve los archivos del paquete por https en vez de por file://, que es lo
+  // que convierte la app en un «sitio seguro» y permite usar la camara y
+  // guardar la sesion.
   implementation("androidx.webkit:webkit:1.12.1")
+  // El FileProvider que le pasa una foto tomada con la camara a la pagina web
+  // sin abrirle el resto del almacenamiento del telefono.
+  implementation("androidx.core:core:1.13.1")
 }

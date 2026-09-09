@@ -3,9 +3,25 @@ import { getSupabase } from '@/lib/supabase'
 import { Login } from './screens/Login'
 import { Pair } from './screens/Pair'
 import { Hosts } from './screens/Hosts'
+import { BuscarCarpetas } from './screens/BuscarCarpetas'
 import { Chat } from './screens/Chat'
 import { Ideas } from './screens/Ideas'
 import { APK_URL, useUpdateCheck } from './updateCheck'
+
+const TITULOS = {
+  agentes: 'Agentes',
+  ideas: 'Ideas',
+  buscar: 'Buscar carpetas',
+} as const
+
+/** Igual que el titulo, pero corto: en la pestana no entra "Buscar carpetas". */
+const ETIQUETAS = {
+  agentes: 'Agentes',
+  ideas: 'Ideas',
+  buscar: 'Buscar',
+} as const
+
+type Pestana = keyof typeof TITULOS
 
 /** El agente que se esta mirando, con lo justo para pintar la cabecera. */
 export interface ChatTarget {
@@ -29,7 +45,7 @@ export function App() {
    * el correo se queda como salida de emergencia si la camara no coopera.
    */
   const [puerta, setPuerta] = useState<'qr' | 'correo'>('qr')
-  const [pestana, setPestana] = useState<'agentes' | 'ideas'>('agentes')
+  const [pestana, setPestana] = useState<Pestana>('agentes')
   const [chat, setChat] = useState<ChatTarget | null>(null)
   const { versionNueva } = useUpdateCheck()
 
@@ -61,7 +77,7 @@ export function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <span className="topbar__title">{pestana === 'agentes' ? 'Agentes' : 'Ideas'}</span>
+        <span className="topbar__title">{TITULOS[pestana]}</span>
         {versionNueva && (
           <a className="update-pill" href={APK_URL} title={`Descargar la ${versionNueva}`}>
             <span className="update-pill__icon" aria-hidden="true">
@@ -72,26 +88,24 @@ export function App() {
         )}
       </header>
 
-      <main className="body">
-        {pestana === 'agentes' ? <Hosts onAbrir={setChat} /> : <Ideas />}
-      </main>
-
       <nav className="tabs">
-        <button
-          type="button"
-          className={`tab${pestana === 'agentes' ? ' tab--on' : ''}`}
-          onClick={() => setPestana('agentes')}
-        >
-          Agentes
-        </button>
-        <button
-          type="button"
-          className={`tab${pestana === 'ideas' ? ' tab--on' : ''}`}
-          onClick={() => setPestana('ideas')}
-        >
-          Ideas
-        </button>
+        {(Object.keys(TITULOS) as Pestana[]).map((p) => (
+          <button
+            type="button"
+            key={p}
+            className={`tab${pestana === p ? ' tab--on' : ''}`}
+            onClick={() => setPestana(p)}
+          >
+            {ETIQUETAS[p]}
+          </button>
+        ))}
       </nav>
+
+      <main className="body">
+        {pestana === 'agentes' && <Hosts onAbrir={setChat} />}
+        {pestana === 'ideas' && <Ideas />}
+        {pestana === 'buscar' && <BuscarCarpetas />}
+      </main>
     </div>
   )
 }

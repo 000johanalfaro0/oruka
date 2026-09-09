@@ -185,9 +185,8 @@ button {
   display: flex;
   gap: var(--sp-2);
   background: var(--bg-chrome);
-  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   padding: var(--sp-2);
-  padding-bottom: calc(var(--sp-2) + env(safe-area-inset-bottom));
 }
 
 .tab {
@@ -360,49 +359,6 @@ button {
   opacity: 0.4;
 }
 
-/* Separado a proposito del bloque de carpetas abiertas de arriba: esto no es
- * "mas de la misma lista", es una herramienta distinta -buscar una carpeta
- * que hoy no esta abierta- y tiene que leerse como tal. */
-.cerradas {
-  margin: var(--sp-4) var(--sp-3) var(--sp-3);
-  border-radius: var(--radius);
-  background: var(--bg-input);
-  overflow: hidden;
-}
-
-.cerradas .row {
-  margin: 0 var(--sp-2) var(--sp-2);
-  width: auto;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: var(--bg-chrome);
-}
-
-.cerradas__toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: var(--sp-3) var(--sp-4);
-  color: var(--fg-muted);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  background: transparent;
-}
-
-.cerradas__toggle:active {
-  background: var(--hover);
-}
-
-.cerradas__toggle > span:first-child::before {
-  content: '\1F50D';
-  margin-right: var(--sp-2);
-}
-
-.cerradas__flecha {
-  color: var(--fg-dim);
-}
-
 .cerradas__buscar {
   display: block;
   width: calc(100% - 32px);
@@ -424,6 +380,14 @@ button {
   margin: 0 var(--sp-4) var(--sp-3);
   color: var(--fg-dim);
   font-size: var(--fs-xs);
+}
+
+/* El buscador de carpetas vive suelto en su propio modulo, ya dentro del
+   relleno de `.body` -no metido en la caja `.cerradas`, que sigue existiendo
+   para otros usos-. Solo necesita su propio margen inferior. */
+.buscar__campo {
+  width: 100%;
+  margin: 0 0 var(--sp-3);
 }
 
 /* Fila pulsable. 52px de alto: por debajo de eso se falla al tocar. */

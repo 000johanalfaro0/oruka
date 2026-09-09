@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createRelay, type Relay, type RemoteHost } from '@/lib/relay'
 import { getSupabase } from '@/lib/supabase'
+import { estaRealmenteEnLinea } from '../hostEstado'
 import type { ChatTarget } from '../App'
 
 /** «hace 3 min». Un movil no necesita la hora exacta: necesita saber si esto vive. */
@@ -11,19 +12,6 @@ function hace(iso: string): string {
   const horas = Math.floor(minutos / 60)
   if (horas < 24) return `hace ${horas} h`
   return `hace ${Math.floor(horas / 24)} d`
-}
-
-/**
- * Cuanto tiempo sin noticias hace que un equipo "en linea" ya no se cree.
- *
- * El escritorio apaga la bandera al cerrarse bien, pero un cierre a la brava
- * -se acaba la bateria, lo mata el sistema- nunca llega a avisar. Sin este
- * limite, ese equipo se veria "conectado" para siempre.
- */
-const SE_CREE_VIVO_MS = 2 * 60 * 1000
-
-function estaRealmenteEnLinea(host: RemoteHost): boolean {
-  return host.online && Date.now() - new Date(host.last_seen).getTime() < SE_CREE_VIVO_MS
 }
 
 const COMO_VA: Record<string, string> = {
@@ -38,16 +26,16 @@ const COMO_VA: Record<string, string> = {
  * Lo que se ve aqui es una foto que publica el PC, no una consulta a la
  * maquina: si el PC esta apagado, la foto es la ultima que dejo y se dice
  * cuando fue. Inventar que sigue vivo seria peor que decir que no se sabe.
+ *
+ * Las carpetas que hoy NO estan abiertas viven en su propio modulo (Buscar
+ * carpetas): esto es para mirar lo que ya esta pasando, no para revolver
+ * una lista de todo lo que existe.
  */
 export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
   const [hosts, setHosts] = useState<RemoteHost[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  /** La ruta que se acaba de pedir abrir o cerrar, mientras se confirma. */
+  /** La ruta que se acaba de pedir cerrar, mientras se confirma. */
   const [pendiente, setPendiente] = useState<string | null>(null)
-  /** Si la lista de "otras carpetas" esta desplegada, por equipo. */
-  const [otrasAbiertas, setOtrasAbiertas] = useState<Record<string, boolean>>({})
-  /** Lo que se esta buscando en esa lista, por equipo. */
-  const [busquedas, setBusquedas] = useState<Record<string, string>>({})
   const relayRef = useRef<Relay | null>(null)
 
   useEffect(() => {
@@ -77,19 +65,19 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
   }, [])
 
   /**
-   * Pide abrir o cerrar una carpeta.
+   * Pide cerrar una carpeta abierta.
    *
    * No se ejecuta aqui: se deja el pedido para que el PC lo recoja y decida.
    * Es la misma orden que escribirle a un agente, solo que esta la atiende el
    * workspace en vez de una sesion.
    */
-  const pedir = async (host: RemoteHost, path: string, kind: 'open_project' | 'close_project') => {
+  const cerrar = async (host: RemoteHost, path: string) => {
     const relay = relayRef.current
     if (!relay) return
     setPendiente(path)
     setError(null)
     try {
-      await relay.sendInput(host.id, 'workspace', path, kind)
+      await relay.sendInput(host.id, 'workspace', path, 'close_project')
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
       setPendiente(null)
@@ -113,7 +101,6 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
     <>
       {hosts.map((host) => {
         const proyectos = host.state?.projects ?? []
-        const cerradas = host.state?.closedProjects ?? []
         const enLinea = estaRealmenteEnLinea(host)
         return (
           <section className="card" key={host.id}>
@@ -138,7 +125,7 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
                     className="group__cerrar"
                     disabled={!enLinea || pendiente === proyecto.path}
                     title="Cerrar esta carpeta"
-                    onClick={() => void pedir(host, proyecto.path, 'close_project')}
+                    onClick={() => void cerrar(host, proyecto.path)}
                   >
                     ✕
                   </button>
@@ -172,62 +159,6 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
                 ))}
               </div>
             ))}
-
-            {cerradas.length > 0 && (
-              <div className="cerradas">
-                <button
-                  type="button"
-                  className="cerradas__toggle"
-                  onClick={() =>
-                    setOtrasAbiertas((s) => ({ ...s, [host.id]: !s[host.id] }))
-                  }
-                >
-                  <span>Buscar otra carpeta</span>
-                  <span className="cerradas__flecha">{otrasAbiertas[host.id] ? '▾' : '▸'}</span>
-                </button>
-
-                {otrasAbiertas[host.id] && (
-                  <>
-                    <input
-                      type="search"
-                      className="cerradas__buscar"
-                      placeholder="Escribe el nombre de una carpeta…"
-                      value={busquedas[host.id] ?? ''}
-                      onChange={(e) =>
-                        setBusquedas((s) => ({ ...s, [host.id]: e.target.value }))
-                      }
-                    />
-                    {(busquedas[host.id] ?? '').trim().length === 0 ? (
-                      <p className="cerradas__pista">
-                        {cerradas.length} carpeta{cerradas.length === 1 ? '' : 's'} más en este
-                        equipo. Escribe para buscar.
-                      </p>
-                    ) : (
-                      cerradas
-                        .filter((c) =>
-                          c.name.toLowerCase().includes((busquedas[host.id] ?? '').toLowerCase()),
-                        )
-                        .map((c) => (
-                          <button
-                            type="button"
-                            className="row"
-                            key={c.path}
-                            disabled={!enLinea || pendiente === c.path}
-                            onClick={() => void pedir(host, c.path, 'open_project')}
-                          >
-                            <span className="row__text">
-                              <span className="row__title">{c.name}</span>
-                            </span>
-                            <span className="row__hint">
-                              {pendiente === c.path ? 'abriendo…' : 'abrir'}
-                            </span>
-                          </button>
-                        ))
-                    )}
-                  </>
-                )}
-              </div>
-            )}
           </section>
         )
       })}

@@ -27,5 +27,17 @@
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
     </activity>
+
+    <!-- Deja que la app de camara guarde una foto y se la devuelva a esta app
+         sin darle acceso a todo el almacenamiento del telefono. -->
+    <provider
+        android:name="androidx.core.content.FileProvider"
+        android:authorities="com.jojan.oruka.fileprovider"
+        android:exported="false"
+        android:grantUriPermissions="true">
+      <meta-data
+          android:name="android.support.FILE_PROVIDER_PATHS"
+          android:resource="@xml/file_paths" />
+    </provider>
   </application>
 </manifest>

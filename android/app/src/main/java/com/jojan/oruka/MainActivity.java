@@ -6,15 +6,24 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.webkit.DownloadListener;
 import android.webkit.PermissionRequest;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import androidx.core.content.FileProvider;
 import androidx.webkit.WebViewAssetLoader;
+
+import java.io.File;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 /**
  * La app entera.
@@ -33,7 +42,14 @@ public class MainActivity extends Activity {
   private static final String INICIO =
       "https://appassets.androidplatform.net/assets/web/index.html";
 
+  /** Codigo que identifica «esto viene de elegir foto» al volver de la otra app. */
+  private static final int PEDIDO_FOTO = 100;
+
   private WebView web;
+  /** El aviso de la pagina web, guardado hasta que vuelva la galeria o la camara. */
+  private ValueCallback<Uri[]> callbackFoto;
+  /** Donde quedo la foto si se eligio tomarla con la camara, no de la galeria. */
+  private Uri fotoDeCamara;
 
   @Override
   protected void onCreate(Bundle estado) {
@@ -68,6 +84,38 @@ public class MainActivity extends Activity {
           }
         });
       }
+
+      // El WebView tampoco sabe abrir la galeria ni la camara por su cuenta:
+      // sin esto, tocar «elegir foto» en la web no hace nada, igual que pasaba
+      // con la descarga. Se ofrecen las dos opciones a la vez -galeria o
+      // tomar una nueva- y se le devuelve a la web lo que la persona elija.
+      @Override
+      public boolean onShowFileChooser(WebView vista, ValueCallback<Uri[]> callback,
+          FileChooserParams parametros) {
+        if (callbackFoto != null) {
+          callbackFoto.onReceiveValue(null);
+        }
+        callbackFoto = callback;
+
+        Intent galeria = new Intent(Intent.ACTION_GET_CONTENT);
+        galeria.addCategory(Intent.CATEGORY_OPENABLE);
+        galeria.setType("image/*");
+
+        Intent elegir = Intent.createChooser(galeria, "Elegir imagen");
+
+        Intent camara = crearIntentCamara();
+        if (camara != null) {
+          elegir.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[] {camara});
+        }
+
+        try {
+          startActivityForResult(elegir, PEDIDO_FOTO);
+        } catch (Exception e) {
+          callbackFoto = null;
+          return false;
+        }
+        return true;
+      }
     });
 
     // El WebView no sabe bajar archivos: sin esto, tocar el enlace del APK
@@ -97,6 +145,58 @@ public class MainActivity extends Activity {
     if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
       requestPermissions(new String[] {Manifest.permission.CAMERA}, 1);
     }
+  }
+
+  /**
+   * Prepara el intent de camara con un archivo de verdad para guardar la foto.
+   *
+   * Sin decirle donde guardarla, la camara solo devuelve una miniatura -no
+   * sirve para subir una foto legible de un cuaderno. `null` si algo falla al
+   * crear el archivo: la galeria se ofrece igual, solo se pierde la opcion
+   * de tomar una nueva.
+   */
+  private Intent crearIntentCamara() {
+    Intent camara = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+    if (camara.resolveActivity(getPackageManager()) == null) {
+      return null;
+    }
+    try {
+      String nombre = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+      File carpeta = new File(getCacheDir(), "fotos");
+      if (!carpeta.exists() && !carpeta.mkdirs()) {
+        return null;
+      }
+      File archivo = File.createTempFile("foto_" + nombre, ".jpg", carpeta);
+      fotoDeCamara = FileProvider.getUriForFile(this, "com.jojan.oruka.fileprovider", archivo);
+      camara.putExtra(MediaStore.EXTRA_OUTPUT, fotoDeCamara);
+      camara.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+      return camara;
+    } catch (IOException e) {
+      return null;
+    }
+  }
+
+  @Override
+  protected void onActivityResult(int codigo, int resultado, Intent datos) {
+    super.onActivityResult(codigo, resultado, datos);
+    if (codigo != PEDIDO_FOTO || callbackFoto == null) {
+      return;
+    }
+
+    Uri[] elegido = null;
+    if (resultado == RESULT_OK) {
+      if (datos != null && datos.getData() != null) {
+        // Vino de la galeria.
+        elegido = new Uri[] {datos.getData()};
+      } else if (fotoDeCamara != null) {
+        // Vino de la camara: no trae datos, la foto ya quedo en el archivo.
+        elegido = new Uri[] {fotoDeCamara};
+      }
+    }
+
+    callbackFoto.onReceiveValue(elegido);
+    callbackFoto = null;
+    fotoDeCamara = null;
   }
 
   /** El boton de atras navega dentro de la web antes de cerrar la app. */
