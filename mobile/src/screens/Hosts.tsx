@@ -147,11 +147,11 @@ export function Hosts({ onAbrir }: { onAbrir: (destino: ChatTarget) => void }) {
                       })
                     }
                   >
-                    <span className={`dot dot--${agente.actividad}`} aria-hidden="true" />
                     <span className="row__text">
                       <span className="row__title">{agente.cliName}</span>
                       <span className="row__hint">{COMO_VA[agente.actividad] ?? 'listo'}</span>
                     </span>
+                    <span className={`dot dot--${agente.actividad}`} aria-hidden="true" />
                     <span className="row__chevron" aria-hidden="true">
                       ›
                     </span>

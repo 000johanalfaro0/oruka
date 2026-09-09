@@ -321,7 +321,7 @@ button {
 .group {
   display: flex;
   align-items: center;
-  padding: var(--sp-2) var(--sp-4);
+  padding: var(--sp-1) var(--sp-4);
   color: var(--fg);
   font-size: var(--fs-sm);
   font-weight: 700;
@@ -388,14 +388,14 @@ button {
   margin: 0 0 var(--sp-3);
 }
 
-/* Fila pulsable. 52px de alto: por debajo de eso se falla al tocar. */
+/* Fila pulsable. 48px de alto: el minimo recomendado para no fallar al tocar. */
 .row {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
   width: 100%;
-  min-height: 52px;
-  padding: var(--sp-3) var(--sp-4);
+  min-height: 48px;
+  padding: var(--sp-2) var(--sp-4);
   border: none;
   border-top: 1px solid var(--border);
   background: transparent;
@@ -424,8 +424,11 @@ button {
   font-size: var(--fs-xs);
 }
 
-.row__chevron {
+.row .dot {
   margin-left: auto;
+}
+
+.row__chevron {
   color: var(--fg-dim);
 }
 
