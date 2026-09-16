@@ -15,6 +15,7 @@ import {
 import { storeGet, storeSet } from '@/lib/store'
 import { syncProject } from '@/lib/roles'
 import { playFinishedSound } from '@/lib/notifications'
+import { fueTrabajoDelAgente } from '@/lib/trabajoReal'
 import { recordPreview, toPreview, touchSession } from '@/lib/sessions'
 import type { RemoteSnapshot } from '@/lib/relay'
 import { apagar, encender, estabaActivo, type BridgePort } from './remoteBridge'
@@ -95,6 +96,20 @@ const trabajandoDesde = new Map<string, number>()
 /** Por debajo de esto, un tramo de "trabajando" es ruido, no una tarea real. */
 const MIN_TRABAJO_MS = 4000
 
+/**
+ * Cuando escribiste por ultima vez en cada sesion.
+ *
+ * Lo apunta la terminal con cada tecla. Sin esto, escribir un mensaje largo
+ * se contaba como trabajo del agente y el aviso sonaba al soltar el teclado.
+ * Ver `@/lib/trabajoReal`.
+ */
+const ultimaEntrada = new Map<string, number>()
+
+/** La terminal avisa aqui de cada tecla enviada al agente. */
+export function marcarEntrada(sessionId: string) {
+  ultimaEntrada.set(sessionId, Date.now())
+}
+
 /** Empieza a escuchar el gasto de una sesion y lo guarda bajo su CLI. */
 function escuchar(sessionId: string, cliId: string, set: (g: (p: Gasto) => Gasto) => void) {
   if (escuchas.has(sessionId)) return
@@ -125,6 +140,7 @@ function dejar(sessionId: string) {
   ultimaSalida.delete(sessionId)
   terminadas.delete(sessionId)
   trabajandoDesde.delete(sessionId)
+  ultimaEntrada.delete(sessionId)
 }
 
 /**
@@ -608,7 +624,13 @@ setInterval(() => {
           // pestana redimensiona la terminal y el CLI repinta su pantalla,
           // lo que por si solo parece un parpadeo de "trabajando".
           const desde = trabajandoDesde.get(id) ?? ahora
-          if (ahora - desde >= MIN_TRABAJO_MS) void playFinishedSound()
+          const esTrabajo = fueTrabajoDelAgente({
+            inicio: desde,
+            fin: ahora,
+            ultimaTecla: ultimaEntrada.get(id) ?? 0,
+            minimoMs: MIN_TRABAJO_MS,
+          })
+          if (esTrabajo) void playFinishedSound()
           trabajandoDesde.delete(id)
         }
       }

@@ -10,8 +10,9 @@ import {
   onAgentExit,
   onAgentOutput,
 } from '@/lib/agents'
-import { readClipboard, writeClipboard } from '@/lib/clipboard'
+import { contenidoParaPegar, writeClipboard } from '@/lib/clipboard'
 import { useContextMenu, type MenuItem } from '@/shared/ContextMenu'
+import { marcarEntrada } from './workspaceStore'
 import '@xterm/xterm/css/xterm.css'
 
 /** Paleta ANSI inspirada en el tema oscuro de Antigravity. */
@@ -103,6 +104,18 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
      *      term.paste (evita que xterm mande el byte crudo \x16 y respeta bracketed paste).
      *    - Ctrl+A / Cmd+A: selecciona todo el texto de la terminal.
      */
+    /**
+     * Pegar texto o imagen.
+     *
+     * Una captura de pantalla no se puede dibujar dentro de una terminal, asi
+     * que se guarda en disco y lo que se escribe es su ruta: el agente la abre
+     * desde ahi. Ver `contenidoParaPegar`.
+     */
+    const pegar = async () => {
+      const contenido = await contenidoParaPegar()
+      if (alive && contenido) term.paste(contenido)
+    }
+
     term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
       const isCtrlOrCmd = e.ctrlKey || e.metaKey
       const key = e.key.toLowerCase()
@@ -129,15 +142,7 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
         (e.shiftKey && (e.key === 'Insert' || key === 'v'))
 
       if (isPaste) {
-        if (e.type === 'keydown') {
-          readClipboard()
-            .then((text) => {
-              if (text && alive) {
-                term.paste(text)
-              }
-            })
-            .catch(() => {})
-        }
+        if (e.type === 'keydown') void pegar()
         return false
       }
 
@@ -159,13 +164,10 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
       const text = e.clipboardData?.getData('text')
       if (text) {
         term.paste(text)
-      } else {
-        readClipboard()
-          .then((clipText) => {
-            if (clipText && alive) term.paste(clipText)
-          })
-          .catch(() => {})
+        return
       }
+      // Sin texto puede ser una imagen; el portapapeles del sistema lo dira.
+      void pegar()
     }
     host.addEventListener('paste', handlePaste)
     cleanups.push(() => host.removeEventListener('paste', handlePaste))
@@ -174,11 +176,7 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
     const handleAuxClick = (e: MouseEvent) => {
       if (e.button === 1) {
         e.preventDefault()
-        readClipboard()
-          .then((text) => {
-            if (text && alive) term.paste(text)
-          })
-          .catch(() => {})
+        void pegar()
       }
     }
     host.addEventListener('auxclick', handleAuxClick)
@@ -215,6 +213,11 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
 
     term.onData((data) => {
       if (alive && ready) {
+        // Antes de escribir: el estado de "trabajando" se deduce de la salida
+        // de la terminal, y tus propias teclas se repintan en ella. Sin esta
+        // marca, escribir un mensaje largo sonaba como si el agente hubiese
+        // terminado una tarea.
+        marcarEntrada(sessionId)
         void agentWrite(sessionId, data)
       }
     })
@@ -329,11 +332,9 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
         label: 'Pegar',
         icon: 'clippy',
         action: () => {
-          readClipboard()
-            .then((text) => {
-              if (text) term.paste(text)
-            })
-            .catch(() => {})
+          void contenidoParaPegar().then((contenido) => {
+            if (contenido) term.paste(contenido)
+          })
         },
       },
       {

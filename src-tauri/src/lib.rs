@@ -5,6 +5,7 @@
 //! con la red: siempre a traves de uno de estos comandos.
 
 mod browser_ext;
+mod clipboard_img;
 mod github;
 mod mcp;
 mod node;
@@ -96,6 +97,7 @@ pub fn run() {
             agent_scrollback,
             clipboard_read,
             clipboard_write,
+            clipboard_read_image,
             router_status,
             router_install,
             router_start,
@@ -666,9 +668,28 @@ mod win_clipboard {
         fn GlobalAlloc(uFlags: u32, dwBytes: usize) -> *mut std::ffi::c_void;
         fn GlobalLock(hMem: *mut std::ffi::c_void) -> *mut std::ffi::c_void;
         fn GlobalUnlock(hMem: *mut std::ffi::c_void) -> i32;
+        fn GlobalSize(hMem: *mut std::ffi::c_void) -> usize;
+        fn IsClipboardFormatAvailable(uFormat: u32) -> i32;
+        fn RegisterClipboardFormatW(lpszFormat: *const u16) -> u32;
+    }
+
+    #[link(name = "shell32")]
+    extern "system" {
+        fn DragQueryFileW(
+            hDrop: *mut std::ffi::c_void,
+            iFile: u32,
+            lpszFile: *mut u16,
+            cch: u32,
+        ) -> u32;
     }
 
     const CF_UNICODETEXT: u32 = 13;
+    /// Archivos copiados desde el explorador.
+    const CF_HDROP: u32 = 15;
+    /// El mapa de bits crudo de una captura de pantalla.
+    const CF_DIB: u32 = 8;
+    /// La version moderna del anterior, con mas datos de color.
+    const CF_DIBV5: u32 = 17;
     const GMEM_MOVEABLE: u32 = 0x0002;
 
     pub fn read_text() -> Result<String, String> {
@@ -698,6 +719,101 @@ mod win_clipboard {
         }
     }
 
+    /// Lo que hay en el portapapeles cuando es una imagen.
+    pub enum Pegado {
+        /// Un archivo que ya existe en disco: se usa su ruta tal cual.
+        Ruta(String),
+        /// Una imagen suelta, ya convertida a PNG, que hay que guardar.
+        Png(Vec<u8>),
+    }
+
+    /// Copia a un Vec el contenido de un bloque del portapapeles.
+    unsafe fn bytes_de(handle: *mut std::ffi::c_void) -> Option<Vec<u8>> {
+        let tam = GlobalSize(handle);
+        if tam == 0 {
+            return None;
+        }
+        let ptr = GlobalLock(handle) as *const u8;
+        if ptr.is_null() {
+            return None;
+        }
+        let datos = std::slice::from_raw_parts(ptr, tam).to_vec();
+        GlobalUnlock(handle);
+        Some(datos)
+    }
+
+    /// Lee la imagen del portapapeles, si la hay.
+    ///
+    /// Prueba tres sitios, de mas fiable a menos:
+    ///
+    /// 1. Un archivo copiado en el explorador: ya esta en disco, no hay nada
+    ///    que convertir.
+    /// 2. El formato "PNG" que dejan los navegadores: son bytes ya listos.
+    /// 3. El mapa de bits crudo de una captura de pantalla, que hay que
+    ///    traducir a PNG.
+    pub fn read_image() -> Result<Option<Pegado>, String> {
+        unsafe {
+            if OpenClipboard(null_mut()) == 0 {
+                return Ok(None);
+            }
+            let resultado = leer_imagen_abierto();
+            CloseClipboard();
+            Ok(resultado)
+        }
+    }
+
+    /// El cuerpo de `read_image`, con el portapapeles ya abierto.
+    unsafe fn leer_imagen_abierto() -> Option<Pegado> {
+        if IsClipboardFormatAvailable(CF_HDROP) != 0 {
+            let handle = GetClipboardData(CF_HDROP);
+            if !handle.is_null() {
+                // Solo el primer archivo, y solo si es una imagen.
+                let largo = DragQueryFileW(handle, 0, null_mut(), 0);
+                if largo > 0 {
+                    let mut buf = vec![0u16; largo as usize + 1];
+                    let escrito = DragQueryFileW(handle, 0, buf.as_mut_ptr(), largo + 1);
+                    if escrito > 0 {
+                        buf.truncate(escrito as usize);
+                        let ruta = OsString::from_wide(&buf).to_string_lossy().into_owned();
+                        if crate::clipboard_img::es_imagen_por_extension(&ruta) {
+                            return Some(Pegado::Ruta(ruta));
+                        }
+                    }
+                }
+            }
+        }
+
+        let formato_png = {
+            let nombre: Vec<u16> = OsStr::new("PNG").encode_wide().chain(Some(0)).collect();
+            RegisterClipboardFormatW(nombre.as_ptr())
+        };
+        if formato_png != 0 && IsClipboardFormatAvailable(formato_png) != 0 {
+            let handle = GetClipboardData(formato_png);
+            if !handle.is_null() {
+                if let Some(datos) = bytes_de(handle) {
+                    return Some(Pegado::Png(datos));
+                }
+            }
+        }
+
+        for formato in [CF_DIBV5, CF_DIB] {
+            if IsClipboardFormatAvailable(formato) == 0 {
+                continue;
+            }
+            let handle = GetClipboardData(formato);
+            if handle.is_null() {
+                continue;
+            }
+            if let Some(datos) = bytes_de(handle) {
+                if let Ok(png) = crate::clipboard_img::dib_a_png(&datos) {
+                    return Some(Pegado::Png(png));
+                }
+            }
+        }
+
+        None
+    }
+
     pub fn write_text(text: &str) -> Result<(), String> {
         unsafe {
             if OpenClipboard(null_mut()) == 0 {
@@ -725,8 +841,13 @@ mod win_clipboard {
 
 #[cfg(not(target_os = "windows"))]
 mod win_clipboard {
+    pub enum Pegado {
+        Ruta(String),
+        Png(Vec<u8>),
+    }
     pub fn read_text() -> Result<String, String> { Ok(String::new()) }
     pub fn write_text(_text: &str) -> Result<(), String> { Ok(()) }
+    pub fn read_image() -> Result<Option<Pegado>, String> { Ok(None) }
 }
 
 /// Lee el portapapeles directamente desde el sistema operativo sin disparar avisos web.
@@ -739,4 +860,60 @@ fn clipboard_read() -> Result<String, String> {
 #[tauri::command]
 fn clipboard_write(text: String) -> Result<(), String> {
     win_clipboard::write_text(&text)
+}
+
+/// La imagen del portapapeles, ya guardada en disco, o `None` si no hay.
+///
+/// Una terminal no sabe mostrar imagenes: solo texto. Pero los CLIs de IA si
+/// leen una imagen si les das su ruta. Asi que al pegar una captura se guarda
+/// en la carpeta temporal y lo que entra en la terminal es esa ruta.
+///
+/// Los archivos quedan en la carpeta temporal del sistema, que Windows limpia
+/// por su cuenta; borrarlos aqui seria quitarselos al agente antes de que los
+/// lea.
+#[tauri::command]
+fn clipboard_read_image() -> Result<Option<String>, String> {
+    match win_clipboard::read_image()? {
+        None => Ok(None),
+        Some(win_clipboard::Pegado::Ruta(ruta)) => Ok(Some(ruta)),
+        Some(win_clipboard::Pegado::Png(bytes)) => {
+            let stamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis())
+                .unwrap_or(0);
+            let destino = std::env::temp_dir().join(format!("oruka-pegado-{stamp}.png"));
+            std::fs::write(&destino, bytes)
+                .map_err(|e| format!("no se pudo guardar la imagen pegada: {e}"))?;
+            Ok(Some(destino.to_string_lossy().to_string()))
+        }
+    }
+}
+
+#[cfg(all(test, target_os = "windows"))]
+mod tests_portapapeles {
+    /// Comprobacion de verdad contra el portapapeles de Windows.
+    ///
+    /// Va marcada como ignorada porque **pisa lo que el usuario tenga
+    /// copiado**. Se corre a mano despues de tocar este codigo:
+    ///
+    ///     cargo test --lib -- --ignored --nocapture
+    ///
+    /// Antes de correrla, copia una imagen (por ejemplo con Win+Shift+S).
+    #[test]
+    #[ignore]
+    fn lee_la_imagen_que_hay_copiada_ahora_mismo() {
+        let resultado = super::clipboard_read_image().expect("no deberia fallar");
+        let ruta = resultado.expect("copia una imagen antes de correr esta prueba");
+        println!("imagen pegada en: {ruta}");
+
+        let bytes = std::fs::read(&ruta).expect("el archivo deberia existir");
+        assert!(bytes.len() > 100, "el archivo esta vacio");
+        if ruta.ends_with(".png") {
+            assert_eq!(
+                &bytes[0..8],
+                &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A],
+                "deberia ser un PNG valido"
+            );
+        }
+    }
 }

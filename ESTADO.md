@@ -14,9 +14,11 @@ que absorbe la app Idearia.
     npm run app        # app de escritorio (Tauri + Vite)
     npm run build      # typecheck + bundle
     npm run lint       # incluye la frontera entre módulos
+    npm test           # pruebas de lógica en Node (lee los .ts sin runner)
     cd src-tauri && cargo test --lib
 
-Requisitos: Node 20+, Rust estable, WebView2 (de serie en Win11). Los CLIs de IA
+Requisitos: Node 24+ (el `npm test` usa la lectura directa de TypeScript),
+Rust estable, WebView2 (de serie en Win11). Los CLIs de IA
 se detectan solos si están en el PATH; no hace falta tenerlos todos.
 
 **Importante:** `.env.local` con las credenciales de Supabase se lee **solo al
@@ -31,7 +33,7 @@ arrancar Vite**. Si lo creas o editas con la app corriendo, hay que reiniciarla.
 | Shell | Completo: barra de módulos, pestañas, barra de estado, carga diferida, versión y aviso de actualización |
 | Quick Setup | Completo: instala los CLIs que falten, instala y conecta GitHub, MCP, roles, y relanzable desde Ajustes |
 | Login | Completo: email y contraseña, sesión de 7 días, entra sin red si ya la tenía |
-| Workspace | Funcional: 4 agentes con PTY real (pintado por GPU), repintado al volver, sesiones que sobreviven al cierre, estado real de cada agente, gasto por CLI en la barra de estado |
+| Workspace | Funcional: 4 agentes con PTY real (pintado por GPU), repintado al volver, sesiones que sobreviven al cierre, estado real de cada agente, gasto por CLI en la barra de estado, copiar/pegar texto **e imágenes** en la terminal |
 | MCP | Completo: catálogo, matriz MCP × CLI, diff previo, copia y revertir |
 | Ideas | Funcional: proyectos con renombrar y borrar, detalle con 2 pestañas, horario, 3 tareas de IA |
 | GitHub | Completo: repos, acceso, invitaciones, PR con diff/checks/revisión/fusión, issues y aviso de revisiones |
@@ -41,7 +43,11 @@ arrancar Vite**. Si lo creas o editas con la app corriendo, hay que reiniciarla.
 Medidas reales del build de release: instalador NSIS **2,03 MB**, binario 3,2 MB,
 27 MB de RSS el proceso principal. Arranque JS 60 kB gzip.
 
-92 tests en Rust, 1 ignorado a propósito.
+98 tests en Rust, 2 ignorados a propósito (uno de ellos pisa el portapapeles
+del usuario: se corre a mano con `cargo test --lib -- --ignored`).
+
+6 tests en Node (`npm test`): la regla que decide si suena el aviso de agente
+terminado. Node 24 lee los `.ts` directamente, sin runner ni dependencias.
 
 **Versión publicada: 0.1.16.** La app se actualiza sola desde la 0.1.2. Publicar es `npm run publicar -- <version>
 "<notas>"`: firma, arma el manifiesto y sube la release en un paso. Hacerlo a mano
@@ -117,6 +123,9 @@ son seis, y si falta el `latest.json` la comprobación falla **en silencio**.
 | El interruptor vive en el módulo Móvil, no en Workspace | Es donde el usuario va a buscarlo. Viaja por el bus (`workspace.setRemote`), porque los módulos no se importan entre sí y solo Workspace conoce las sesiones |
 | El móvil habla con el PC por Supabase, no por un puerto abierto | No hay que abrir nada en casa ni montar un túnel, y la cuenta y los permisos ya existían. El precio es que el texto de la terminal pasa por la nube del propio usuario |
 | El móvil **nunca ejecuta nada**: deja texto y el PC decide | Es la única puerta desde fuera hacia un PTY. El puente solo escribe en sesiones que existen ahora mismo en el Workspace, así que un id inventado no abre ni lanza nada |
+| El aviso sonoro descuenta tus propias teclas | La app no puede preguntarle al agente si está ocupado: solo ve que la terminal escupe texto, y tus teclas también se repintan en ella. Se mide desde la última tecla, así que escribir un mensaje largo ya no suena como «tarea terminada» (`src/lib/trabajoReal.ts`) |
+| Pegar una imagen en la terminal escribe su ruta | Una terminal no dibuja imágenes, pero los CLIs de IA sí abren un archivo si les das la ruta. La captura se convierte a PNG en la carpeta temporal y se pega la ruta (entre comillas si tiene espacios) |
+| Al pegar se mira el texto antes que la imagen | Copiar de una hoja de cálculo deja a la vez el texto y una foto de lo copiado. Si se mirara la imagen primero, pegar texto normal metería la ruta de un PNG |
 | El mando viene apagado y se ve mientras está encendido | Encendido, cualquiera con la cuenta puede escribir en agentes que ejecutan cosas en esta máquina. Esconderlo sería lo peor que se puede hacer con eso |
 
 ### Las cuatro protecciones al escribir configs ajenas

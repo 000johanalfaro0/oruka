@@ -2262,6 +2262,7 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 name = "oruka"
 version = "0.1.34"
 dependencies = [
+ "png 0.17.16",
  "portable-pty",
  "rand",
  "serde",

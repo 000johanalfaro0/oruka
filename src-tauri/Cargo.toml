@@ -23,6 +23,8 @@ portable-pty = "0.9"
 tauri-plugin-updater = "2.0.0-rc.4"
 tauri-plugin-process = "2.0.0-rc.1"
 rand = "0.8"
+# Solo para convertir la imagen del portapapeles (un mapa de bits crudo) a PNG.
+png = "0.17"
 
 [profile.release]
 # La app tiene que ser ligera: se optimiza por tamano, no por velocidad bruta.
