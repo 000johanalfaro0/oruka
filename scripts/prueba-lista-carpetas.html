@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Prueba: lista de carpetas de trabajo</title>
+    <!--
+      Banco de pruebas de la lista de carpetas de trabajo.
+
+      Carga el CSS DE VERDAD de la app, no una copia: si alguien cambia
+      workspace.css, esta pagina cambia con el. Sirve para comprobar a ojo y
+      con el navegador que, con muchas carpetas y una ventana baja, la ultima
+      carpeta sigue siendo alcanzable.
+
+      Abrir con:  npx vite --open scripts/prueba-lista-carpetas.html
+      O servir la carpeta del proyecto y entrar a esta ruta.
+    -->
+    <!-- base.css es imprescindible: es donde la app declara que las cajas se
+         miden por fuera (borde incluido). Sin el, esta prueba mediria otra
+         cosa distinta a la app real. -->
+    <link rel="stylesheet" href="../src/ui/base.css" />
+    <link rel="stylesheet" href="../src/modules/workspace/workspace.css" />
+    <style>
+      /* base.css ya pone el fondo, la fuente y el alto completo. */
+      /* El contenedor imita a `.ws-stack`, que en la app ocupa el alto libre
+         entre la barra de pestanas y la barra de estado. */
+      #app {
+        position: relative;
+        height: 100%;
+      }
+      .codicon {
+        font-size: 16px;
+        line-height: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      // Muchas mas carpetas de las que caben: es justo el caso que fallaba.
+      const CARPETAS = Array.from(
+        { length: 24 },
+        (_, i) => `C:\\Users\\jomor\\Desktop\\proyecto-${String(i + 1).padStart(2, '0')}`,
+      )
+
+      const fila = (ruta) => `
+        <li>
+          <div class="ws-picker__item" data-ruta="${ruta}">
+            <i class="codicon codicon-root-folder"></i>
+            <div class="ws-picker__info">
+              <span class="ws-picker__name">${ruta.split('\\').pop()}</span>
+              <span class="ws-picker__path">${ruta}</span>
+            </div>
+            <button type="button" class="ws-picker__remove">
+              <i class="codicon codicon-close"></i>
+            </button>
+          </div>
+        </li>`
+
+      document.getElementById('app').innerHTML = `
+        <div class="ws-layer ws-layer--picker">
+          <div class="ws-picker">
+            <div class="ws-picker__head">
+              <h2 class="ws-picker__title">Carpetas de trabajo</h2>
+              <button class="ws-picker__addroot">
+                <i class="codicon codicon-add"></i><span>Abrir otra carpeta</span>
+              </button>
+            </div>
+            <ul class="ws-picker__list">${CARPETAS.map(fila).join('')}</ul>
+          </div>
+        </div>`
+
+      /**
+       * El veredicto, para poder comprobarlo sin mirar la pantalla.
+       *
+       * Pregunta lo unico que importa: ¿se puede llegar a la ultima carpeta?
+       * Se responde solo si la lista tiene desplazamiento propio y si, al
+       * bajarla del todo, la ultima fila queda dentro de la tarjeta.
+       */
+      window.veredicto = () => {
+        const lista = document.querySelector('.ws-picker__list')
+        const tarjeta = document.querySelector('.ws-picker')
+        lista.scrollTop = lista.scrollHeight
+        const ultima = lista.lastElementChild.getBoundingClientRect()
+        const caja = tarjeta.getBoundingClientRect()
+        return {
+          altoVentana: window.innerHeight,
+          carpetas: CARPETAS.length,
+          laListaSeDesplaza: lista.scrollHeight > lista.clientHeight + 1,
+          laTarjetaCabeEnLaVentana: caja.bottom <= window.innerHeight + 1,
+          laUltimaCarpetaSeVe: ultima.bottom <= caja.bottom + 1 && ultima.top >= caja.top - 1,
+        }
+      }
+    </script>
+  </body>
+</html>

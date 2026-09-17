@@ -99,9 +99,17 @@
   color: var(--fg);
 }
 
+/* La tarjeta nunca pasa del alto de la ventana: con muchas carpetas, lo que
+   crece es la lista de dentro, que se desplaza. Antes la tarjeta se estiraba
+   hacia abajo y las ultimas carpetas quedaban fuera de la pantalla, sin
+   ninguna forma de llegar a ellas. */
 .ws-picker {
   max-width: 600px;
+  /* El margen va en los dos lados; el calculo de abajo lo descuenta. */
   margin: 36px auto;
+  max-height: calc(100% - 72px);
+  display: flex;
+  flex-direction: column;
   padding: 20px 24px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -109,8 +117,11 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
+/* El titulo y el boton de anadir se quedan fijos arriba mientras la lista
+   se desplaza por debajo. */
 .ws-picker__head {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 14px;
@@ -148,10 +159,16 @@
 .ws-picker__list {
   list-style: none;
   margin: 0;
-  padding: 0;
+  /* Hueco a la derecha para que la barra de desplazamiento no tape el boton
+     de quitar una carpeta. */
+  padding: 0 2px 0 0;
   display: flex;
   flex-direction: column;
   gap: 5px;
+  overflow-y: auto;
+  /* Sin esto un hijo de una columna flexible no se encoge, y el desbordamiento
+     se escapa de la tarjeta en vez de desplazarse dentro. */
+  min-height: 0;
 }
 
 .ws-picker__item {
@@ -403,6 +420,11 @@
    desmontar es lo que mantiene vivas las terminales al cambiar de pestana. */
 .ws-stack { position: relative; height: 100%; }
 .ws-layer { position: absolute; inset: 0; }
+/* Red de seguridad, solo para la lista de carpetas: en una ventana muy baja,
+   donde ni la tarjeta encogida cabe, se desplaza la capa entera. Las capas de
+   los agentes NO la llevan: ahi cualquier barra de desplazamiento falsearia
+   el tamano que se le declara a la terminal. */
+.ws-layer--picker { overflow-y: auto; }
 .ws-layer[hidden] { display: none; }
 
 

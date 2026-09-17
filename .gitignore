@@ -19,3 +19,6 @@ android/build/
 android/.gradle/
 android/app/src/main/assets/
 dist-apk/
+
+# Capturas de las pruebas de navegador. No se versionan.
+.playwright-mcp/

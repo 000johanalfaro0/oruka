@@ -29,10 +29,32 @@ button {
 
 :focus-visible { outline: 1px solid var(--focus); outline-offset: -1px; }
 
+/*
+ * Barras de desplazamiento.
+ *
+ * El ancho de 10px se respeta a proposito: es el hueco que el navegador le
+ * quita al contenido, y la terminal calcula cuantas columnas caben a partir
+ * de ese ancho. Cambiarlo movería el texto de todos los agentes.
+ *
+ * Lo que cambia es como se ve: antes era una franja gris clara de esquinas
+ * rectas que cantaba sobre los fondos oscuros. Ahora es un hilo redondeado y
+ * apagado. El borde transparente con `background-clip` es lo que lo estrecha
+ * y lo separa del contenido **sin** encoger la zona que se agarra con el
+ * raton, que sigue siendo de 10px.
+ */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: #4f4f4f; }
-::-webkit-scrollbar-thumb:hover { background: #5f5f5f; }
 ::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.26);
+  background-clip: padding-box;
+}
 
 .codicon { font-size: 16px; line-height: 1; }
 

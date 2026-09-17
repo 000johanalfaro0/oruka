@@ -77,7 +77,7 @@ export default function WorkspaceModule() {
   return (
     <div className="ws-stack">
       {/* Lista de carpetas de trabajo: visible cuando no hay pestana activa. */}
-      <div className="ws-layer" hidden={activePath !== null}>
+      <div className="ws-layer ws-layer--picker" hidden={activePath !== null}>
         <div className="ws-picker">
           <div className="ws-picker__head">
             <h2 className="ws-picker__title">Carpetas de trabajo</h2>
