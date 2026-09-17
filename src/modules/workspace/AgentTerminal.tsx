@@ -11,8 +11,9 @@ import {
   onAgentOutput,
 } from '@/lib/agents'
 import { contenidoParaPegar, writeClipboard } from '@/lib/clipboard'
+import { debeParpadearElCursor } from '@/lib/cursorTerminal'
 import { useContextMenu, type MenuItem } from '@/shared/ContextMenu'
-import { marcarEntrada } from './workspaceStore'
+import { marcarEntrada, useWorkspaceStore } from './workspaceStore'
 import '@xterm/xterm/css/xterm.css'
 
 /** Paleta ANSI inspirada en el tema oscuro de Antigravity. */
@@ -207,6 +208,28 @@ export function AgentTerminal({ sessionId, cliId, cwd, mode, prompt, resume }: P
     }
 
     fit.fit()
+
+    /**
+     * El cursor solo parpadea cuando el turno es tuyo.
+     *
+     * Mientras el agente trabaja, el cursor se queda aparcado debajo de la
+     * salida y su parpadeo, al lado del contador que ya se mueve solo, es
+     * ruido. Se escucha al almacen y no a React porque esto cambia cada medio
+     * segundo y no debe repintar el componente.
+     */
+    let parpadeoPuesto: boolean | null = null
+    const ajustarCursor = (estado: string | undefined) => {
+      const quiere = debeParpadearElCursor(
+        estado === 'trabajando' || estado === 'terminado' ? estado : 'esperando',
+      )
+      if (quiere === parpadeoPuesto) return
+      parpadeoPuesto = quiere
+      term.options.cursorBlink = quiere
+    }
+    ajustarCursor(useWorkspaceStore.getState().actividad[sessionId])
+    cleanups.push(
+      useWorkspaceStore.subscribe((st) => ajustarCursor(st.actividad[sessionId])),
+    )
 
     let alive = true
     let ready = false
