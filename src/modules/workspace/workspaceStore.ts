@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { bus } from '@/shell/bus'
 import { baseName } from '@/lib/paths'
 import {
@@ -15,6 +16,8 @@ import {
 import { storeGet, storeSet } from '@/lib/store'
 import { syncProject } from '@/lib/roles'
 import { playFinishedSound } from '@/lib/notifications'
+import { pathIsDir } from '@/lib/agents'
+import { decidirQueAbrir } from '@/lib/soltarCarpeta'
 import { fueTrabajoDelAgente } from '@/lib/trabajoReal'
 import { recordPreview, toPreview, touchSession } from '@/lib/sessions'
 import type { RemoteSnapshot } from '@/lib/relay'
@@ -164,6 +167,8 @@ interface WorkspaceState {
   usage: Gasto
   /** Que esta haciendo cada agente, indexado por su id de sesion. */
   actividad: Record<string, Actividad>
+  /** Hay algo suspendido sobre la ventana ahora mismo. Solo para pintar el aviso. */
+  arrastrando: boolean
   initialised: boolean
   loading: boolean
   error: string | null
@@ -374,6 +379,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   clis: [],
   usage: {},
   actividad: {},
+  arrastrando: false,
   loading: false,
   error: null,
   remoteEnabled: false,
@@ -651,3 +657,57 @@ setInterval(() => {
 bus.on('workspace.setRemote', ({ on }) => {
   void useWorkspaceStore.getState().toggleRemote(on)
 })
+
+/**
+ * Arrastrar una carpeta a la ventana y soltarla: se abre como sitio de trabajo.
+ *
+ * Se registra aqui, en el almacen, y no en el componente, por lo mismo que el
+ * interruptor de arriba: el shell desmonta el modulo que no esta activo, y si
+ * el oyente viviera ahi, soltar una carpeta mientras miras Ideas no haria
+ * nada. Este archivo, en cambio, sigue en memoria desde que la app arranca.
+ *
+ * Quien decide que es una carpeta y cual se abre esta aparte, en
+ * `@/lib/soltarCarpeta`, para poder probarlo sin ventana ni disco.
+ */
+void getCurrentWebview()
+  .onDragDropEvent(async (evento) => {
+    const tipo = evento.payload.type
+    if (tipo === 'enter' || tipo === 'over') {
+      if (!useWorkspaceStore.getState().arrastrando) {
+        useWorkspaceStore.setState({ arrastrando: true })
+      }
+      return
+    }
+    if (tipo === 'leave') {
+      useWorkspaceStore.setState({ arrastrando: false })
+      return
+    }
+    if (tipo !== 'drop') return
+
+    useWorkspaceStore.setState({ arrastrando: false })
+    const rutas = evento.payload.paths ?? []
+
+    // Se pregunta al disco UNA vez por ruta, antes de decidir nada.
+    const carpetas = new Set<string>()
+    for (const ruta of rutas) {
+      if (await pathIsDir(ruta).catch(() => false)) carpetas.add(ruta)
+    }
+
+    const { carpetas: validas, aAbrir, aviso } = decidirQueAbrir(rutas, (r) => carpetas.has(r))
+    if (!aAbrir) {
+      useWorkspaceStore.setState({ error: aviso })
+      return
+    }
+
+    const store = useWorkspaceStore.getState()
+    // Se anaden todas a la lista, pero solo se abre la primera en una pestana.
+    for (const carpeta of validas) await store.addRoot(carpeta)
+    store.openProject(aAbrir)
+    // Si estabas mirando otro modulo, te lleva a ver la pestana que acaba de
+    // abrirse. Soltar algo y que no pase nada visible seria desconcertante.
+    bus.emit('shell.activateModule', { moduleId: 'workspace' })
+  })
+  .catch(() => {
+    // Fuera de la app de escritorio no hay ventana que escuchar. No es un
+    // fallo: el resto de la app funciona igual.
+  })

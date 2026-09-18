@@ -98,6 +98,7 @@ pub fn run() {
             clipboard_read,
             clipboard_write,
             clipboard_read_image,
+            path_is_dir,
             router_status,
             router_install,
             router_start,
@@ -850,6 +851,16 @@ mod win_clipboard {
     pub fn read_image() -> Result<Option<Pegado>, String> { Ok(None) }
 }
 
+/// Si una ruta es una carpeta que existe ahora mismo.
+///
+/// Hace falta al soltar algo en la ventana: ahi se puede soltar cualquier cosa
+/// -un archivo, un acceso directo, una carpeta que ya no esta- y solo una
+/// carpeta de verdad sirve como sitio donde trabajar.
+#[tauri::command]
+fn path_is_dir(path: String) -> bool {
+    std::path::Path::new(&path).is_dir()
+}
+
 /// Lee el portapapeles directamente desde el sistema operativo sin disparar avisos web.
 #[tauri::command]
 fn clipboard_read() -> Result<String, String> {
@@ -915,5 +926,38 @@ mod tests_portapapeles {
                 "deberia ser un PNG valido"
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests_soltar {
+    /// Lo que decide si una ruta soltada sirve como sitio de trabajo.
+    #[test]
+    fn distingue_una_carpeta_de_un_archivo_y_de_lo_que_no_existe() {
+        let dir = std::env::temp_dir().join(format!(
+            "oruka-prueba-soltar-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0)
+        ));
+        std::fs::create_dir_all(&dir).expect("deberia crearse la carpeta");
+        let archivo = dir.join("suelto.txt");
+        std::fs::write(&archivo, "hola").expect("deberia escribirse el archivo");
+
+        assert!(
+            super::path_is_dir(dir.to_string_lossy().to_string()),
+            "una carpeta si vale"
+        );
+        assert!(
+            !super::path_is_dir(archivo.to_string_lossy().to_string()),
+            "un archivo suelto no vale"
+        );
+        assert!(
+            !super::path_is_dir(dir.join("no-existe").to_string_lossy().to_string()),
+            "lo que no existe no vale"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

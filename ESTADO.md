@@ -43,11 +43,11 @@ arrancar Vite**. Si lo creas o editas con la app corriendo, hay que reiniciarla.
 Medidas reales del build de release: instalador NSIS **2,03 MB**, binario 3,2 MB,
 27 MB de RSS el proceso principal. Arranque JS 60 kB gzip.
 
-98 tests en Rust, 2 ignorados a propósito (uno de ellos pisa el portapapeles
+99 tests en Rust, 2 ignorados a propósito (uno de ellos pisa el portapapeles
 del usuario: se corre a mano con `cargo test --lib -- --ignored`).
 
-9 tests en Node (`npm test`): la regla del aviso sonoro y la del parpadeo del
-cursor. Node 24 lee los `.ts` directamente, sin runner ni dependencias.
+15 tests en Node (`npm test`): el aviso sonoro, el parpadeo del cursor y que
+hacer con lo que se suelta en la ventana. Node 24 lee los `.ts` directamente, sin runner ni dependencias.
 
 **Versión publicada: 0.1.16.** La app se actualiza sola desde la 0.1.2. Publicar es `npm run publicar -- <version>
 "<notas>"`: firma, arma el manifiesto y sube la release en un paso. Hacerlo a mano
@@ -126,6 +126,7 @@ son seis, y si falta el `latest.json` la comprobación falla **en silencio**.
 | El aviso sonoro descuenta tus propias teclas | La app no puede preguntarle al agente si está ocupado: solo ve que la terminal escupe texto, y tus teclas también se repintan en ella. Se mide desde la última tecla, así que escribir un mensaje largo ya no suena como «tarea terminada» (`src/lib/trabajoReal.ts`) |
 | Pegar una imagen en la terminal escribe su ruta | Una terminal no dibuja imágenes, pero los CLIs de IA sí abren un archivo si les das la ruta. La captura se convierte a PNG en la carpeta temporal y se pega la ruta (entre comillas si tiene espacios) |
 | La lista de carpetas de trabajo se desplaza por dentro | La tarjeta nunca pasa del alto de la ventana: con muchas carpetas, las ultimas quedaban fuera de la pantalla y no habia forma de llegar a ellas. El titulo y el boton se quedan fijos arriba. Banco de pruebas en `scripts/prueba-lista-carpetas.html`, que carga el CSS real |
+| Arrastrar una carpeta a la ventana la abre | El oyente del arrastre vive en el almacen, no en el componente: el shell desmonta el modulo que no esta activo, y si viviera ahi, soltar una carpeta mientras miras Ideas no haria nada. Se anaden todas las carpetas soltadas a la lista pero solo se abre la primera en una pestana (`src/lib/soltarCarpeta.ts`) |
 | El cursor de la terminal solo parpadea cuando te toca escribir | Mientras el agente trabaja, el cursor se queda aparcado debajo de la salida y su parpadeo, junto al contador que ya se mueve solo, era ruido. Se escucha al estado del agente fuera de React, porque cambia cada medio segundo y no debe repintar nada (`src/lib/cursorTerminal.ts`) |
 | Las barras de desplazamiento conservan sus 10px de ancho | La terminal calcula cuantas columnas caben a partir del hueco que la barra le quita al contenido. Solo cambia como se pinta: un hilo redondeado en vez de una franja gris |
 | Al pegar se mira el texto antes que la imagen | Copiar de una hoja de cálculo deja a la vez el texto y una foto de lo copiado. Si se mirara la imagen primero, pegar texto normal metería la ruta de un PNG |

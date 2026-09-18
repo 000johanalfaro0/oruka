@@ -28,6 +28,7 @@ export default function WorkspaceModule() {
   const openProject = useWorkspaceStore((s) => s.openProject)
   const removeRoot = useWorkspaceStore((s) => s.removeRoot)
   const error = useWorkspaceStore((s) => s.error)
+  const arrastrando = useWorkspaceStore((s) => s.arrastrando)
   const { open: openMenu, menu } = useContextMenu()
 
   useEffect(() => {
@@ -64,18 +65,39 @@ export default function WorkspaceModule() {
   if (roots.length === 0) {
     return (
       <div className="ws-empty">
+        {arrastrando && (
+          <div className="ws-drop" aria-hidden="true">
+            <div className="ws-drop__caja">
+              <i className="codicon codicon-root-folder" />
+              <span>Suelta la carpeta para trabajar en ella</span>
+            </div>
+          </div>
+        )}
         <i className="codicon codicon-root-folder" aria-hidden="true" />
         <p className="ws-empty__text">Añade la carpeta donde Oruka va a trabajar.</p>
         <button className="ws-empty__action" onClick={() => void pickRoot()}>
           Añadir carpeta de trabajo
         </button>
+        <p className="ws-empty__hint">…o arrastra la carpeta hasta aqui.</p>
         {error && <p className="ws-empty__error">{error}</p>}
       </div>
     )
   }
 
+  // Se pinta sobre todo lo demas, tambien sobre las terminales: el oyente del
+  // arrastre vive en el almacen y funciona mires lo que mires.
+  const veloDeArrastre = arrastrando ? (
+    <div className="ws-drop" aria-hidden="true">
+      <div className="ws-drop__caja">
+        <i className="codicon codicon-root-folder" />
+        <span>Suelta la carpeta para trabajar en ella</span>
+      </div>
+    </div>
+  ) : null
+
   return (
     <div className="ws-stack">
+      {veloDeArrastre}
       {/* Lista de carpetas de trabajo: visible cuando no hay pestana activa. */}
       <div className="ws-layer ws-layer--picker" hidden={activePath !== null}>
         <div className="ws-picker">

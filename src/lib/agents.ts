@@ -155,4 +155,7 @@ export const onAgentExit = (id: string, handler: () => void): Promise<UnlistenFn
 /** Abre una carpeta en el explorador del sistema. */
 export const revealInExplorer = (path: string) => invoke<void>('reveal_in_explorer', { path })
 
+/** Si una ruta es una carpeta que existe. Se usa al soltar algo en la ventana. */
+export const pathIsDir = (path: string) => invoke<boolean>('path_is_dir', { path })
+
 /** Deja un prompt largo en un archivo temporal y devuelve su ruta. */
