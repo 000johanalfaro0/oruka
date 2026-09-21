@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Prueba: gasto de tokens en el pie</title>
+    <!-- Carga el CSS DE VERDAD, no una copia. -->
+    <link rel="stylesheet" href="../src/ui/base.css" />
+    <link rel="stylesheet" href="../src/modules/workspace/workspace.css" />
+    <link rel="stylesheet" href="../src/modules/workspace/usage-bar.css" />
+    <style>
+      body { display: flex; align-items: flex-end; }
+      #pie { width: 100%; }
+    </style>
+  </head>
+  <body>
+    <div id="pie"></div>
+    <script type="module">
+      import { resumirGasto, formatearTokens } from '../src/lib/gastoTokens.ts'
+
+      // Dos Codex y un Claude abiertos a la vez: el caso que antes se machacaba.
+      const sesiones = [
+        { sessionId: 's1', cliId: 'codex', cliName: 'Codex' },
+        { sessionId: 's2', cliId: 'codex', cliName: 'Codex' },
+        { sessionId: 's3', cliId: 'claude', cliName: 'Claude' },
+      ]
+      const gasto = resumirGasto({ s1: 16440, s2: 27568, s3: 4120 }, sesiones)
+
+      document.getElementById('pie').innerHTML = `
+        <div class="workspace-status">
+          <span class="workspace-status__tokens">
+            <i class="codicon codicon-symbol-numeric"></i>
+            <span>${formatearTokens(gasto.total)} tokens</span>
+          </span>
+          <span class="workspace-status__divider">|</span>
+          <span class="workspace-status__project">
+            <i class="codicon codicon-folder"></i><span>oruka</span>
+            <span class="workspace-status__git">
+              <i class="codicon codicon-git-branch"></i><span>main</span>
+            </span>
+          </span>
+          <span class="workspace-status__divider">|</span>
+          <div class="workspace-status__agents">
+            <span class="agent-chip agent-chip--trabajando">
+              <span class="agent-chip__dot agent-chip__dot--trabajando"></span>
+              <span class="agent-chip__name">Codex</span>
+              <span class="agent-chip__mode">yolo</span>
+              <span class="agent-chip__status">escribiendo</span>
+            </span>
+          </div>
+        </div>`
+
+      window.veredicto = () => ({ total: gasto.total, texto: formatearTokens(gasto.total) })
+    </script>
+  </body>
+</html>

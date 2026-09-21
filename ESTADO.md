@@ -46,8 +46,8 @@ Medidas reales del build de release: instalador NSIS **2,03 MB**, binario 3,2 MB
 99 tests en Rust, 2 ignorados a propósito (uno de ellos pisa el portapapeles
 del usuario: se corre a mano con `cargo test --lib -- --ignored`).
 
-15 tests en Node (`npm test`): el aviso sonoro, el parpadeo del cursor y que
-hacer con lo que se suelta en la ventana. Node 24 lee los `.ts` directamente, sin runner ni dependencias.
+20 tests en Node (`npm test`): el aviso sonoro, el parpadeo del cursor, que
+hacer con lo que se suelta en la ventana y la suma del gasto de tokens. Node 24 lee los `.ts` directamente, sin runner ni dependencias.
 
 **Versión publicada: 0.1.16.** La app se actualiza sola desde la 0.1.2. Publicar es `npm run publicar -- <version>
 "<notas>"`: firma, arma el manifiesto y sube la release en un paso. Hacerlo a mano
@@ -126,6 +126,8 @@ son seis, y si falta el `latest.json` la comprobación falla **en silencio**.
 | El aviso sonoro descuenta tus propias teclas | La app no puede preguntarle al agente si está ocupado: solo ve que la terminal escupe texto, y tus teclas también se repintan en ella. Se mide desde la última tecla, así que escribir un mensaje largo ya no suena como «tarea terminada» (`src/lib/trabajoReal.ts`) |
 | Pegar una imagen en la terminal escribe su ruta | Una terminal no dibuja imágenes, pero los CLIs de IA sí abren un archivo si les das la ruta. La captura se convierte a PNG en la carpeta temporal y se pega la ruta (entre comillas si tiene espacios) |
 | La lista de carpetas de trabajo se desplaza por dentro | La tarjeta nunca pasa del alto de la ventana: con muchas carpetas, las ultimas quedaban fuera de la pantalla y no habia forma de llegar a ellas. El titulo y el boton se quedan fijos arriba. Banco de pruebas en `scripts/prueba-lista-carpetas.html`, que carga el CSS real |
+| El gasto de tokens se guarda por terminal, no por CLI | Cada CLI escribe en su terminal el total **de esa terminal**: dos Codex abiertos cuentan cada uno desde cero. Guardar una cifra por CLI, machacandola, daba el total del ultimo que hablo en vez del gasto real. La suma se hace al pintar (`src/lib/gastoTokens.ts`) |
+| El pie NO muestra la cuota semanal | Ni Codex ni Claude la exponen por linea de comandos: solo con `/usage` escrito dentro del CLI, que es interactivo. Inventar una cifra o estimarla seria peor que no ponerla |
 | Arrastrar una carpeta a la ventana la abre | El oyente del arrastre vive en el almacen, no en el componente: el shell desmonta el modulo que no esta activo, y si viviera ahi, soltar una carpeta mientras miras Ideas no haria nada. Se anaden todas las carpetas soltadas a la lista pero solo se abre la primera en una pestana (`src/lib/soltarCarpeta.ts`) |
 | El cursor de la terminal solo parpadea cuando te toca escribir | Mientras el agente trabaja, el cursor se queda aparcado debajo de la salida y su parpadeo, junto al contador que ya se mueve solo, era ruido. Se escucha al estado del agente fuera de React, porque cambia cada medio segundo y no debe repintar nada (`src/lib/cursorTerminal.ts`) |
 | Las barras de desplazamiento conservan sus 10px de ancho | La terminal calcula cuantas columnas caben a partir del hueco que la barra le quita al contenido. Solo cambia como se pinta: un hilo redondeado en vez de una franja gris |

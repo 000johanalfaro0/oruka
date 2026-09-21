@@ -18,6 +18,7 @@ import { syncProject } from '@/lib/roles'
 import { playFinishedSound } from '@/lib/notifications'
 import { pathIsDir } from '@/lib/agents'
 import { decidirQueAbrir } from '@/lib/soltarCarpeta'
+import type { GastoPorSesion } from '@/lib/gastoTokens'
 import { fueTrabajoDelAgente } from '@/lib/trabajoReal'
 import { recordPreview, toPreview, touchSession } from '@/lib/sessions'
 import type { RemoteSnapshot } from '@/lib/relay'
@@ -51,13 +52,14 @@ export interface OpenProject {
 }
 
 /**
- * Lo que gasta cada CLI, no cada agente.
+ * Lo que lleva gastado cada terminal, indexado por sesion.
  *
- * La cuota es de la cuenta, no de la ventana: dos agy abiertos comparten el
- * mismo limite, asi que comparten cifra y comparten barra. Por eso va indexado
- * por CLI y no por sesion.
+ * Va por sesion y no por CLI a proposito. Cada CLI escribe en su terminal el
+ * total **de esa terminal**: dos Codex abiertos cuentan cada uno desde cero.
+ * Guardar una cifra por CLI, machacandola, daba el total del ultimo que hablo
+ * en vez del gasto real. La suma se hace al pintar, en `@/lib/gastoTokens`.
  */
-type Gasto = Record<string, number>
+type Gasto = GastoPorSesion
 
 /**
  * Quien esta escuchando el gasto de cada sesion.
@@ -114,14 +116,14 @@ export function marcarEntrada(sessionId: string) {
 }
 
 /** Empieza a escuchar el gasto de una sesion y lo guarda bajo su CLI. */
-function escuchar(sessionId: string, cliId: string, set: (g: (p: Gasto) => Gasto) => void) {
+function escuchar(sessionId: string, _cliId: string, set: (g: (p: Gasto) => Gasto) => void) {
   if (escuchas.has(sessionId)) return
   // Se marca ya para que dos llamadas seguidas no abran dos suscripciones.
   escuchas.set(sessionId, [])
   const guarda = (off: () => void) => escuchas.get(sessionId)?.push(off)
 
   void onAgentTokens(sessionId, (total) => {
-    set((prev) => ({ ...prev, [cliId]: total }))
+    set((prev) => ({ ...prev, [sessionId]: total }))
   }).then(guarda)
 
   // Solo se apunta la hora. Traducirlo a un estado y repintar lo hace el reloj
@@ -144,6 +146,13 @@ function dejar(sessionId: string) {
   terminadas.delete(sessionId)
   trabajandoDesde.delete(sessionId)
   ultimaEntrada.delete(sessionId)
+  // Su cifra de gasto se va con ella: una terminal cerrada ya no se ve en
+  // ningun sitio, y seguir sumandola seria contar algo que ya no esta.
+  useWorkspaceStore.setState((s) => {
+    const resto = { ...s.usage }
+    delete resto[sessionId]
+    return { usage: resto }
+  })
 }
 
 /**

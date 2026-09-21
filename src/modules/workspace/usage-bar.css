@@ -159,3 +159,20 @@
     transform: scale(0.85);
   }
 }
+
+/* El gasto de toda la sesion, sumando todas las terminales abiertas.
+   Discreto: es un dato de fondo, no una alarma. El desglose por CLI y el
+   aviso de que NO es la cuota semanal van en el tooltip. */
+.workspace-status__tokens {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+
+.workspace-status__tokens .codicon {
+  font-size: 13px;
+  opacity: 0.8;
+}
