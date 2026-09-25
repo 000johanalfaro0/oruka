@@ -1,0 +1,38 @@
+[6n[?9001h[?1004h[m]0;C:\WINDOWS\system32\cmd.exe[?25h]0;C:\WINDOWS\system32\cmd.exe [?2004h[?2026h[?2026l  Welcome to [1mCodex[22m, OpenAI's command-line coding agent[K
+[K
+  Sign in with ChatGPT to use Codex as part of your paid plan[K
+  or connect an API key for usage-based billing[K
+[K[38;5;6m[2m
+> 1. [22mSign in with ChatGPT[K[2m
+     Usage included with Plus, Pro, Business, and Enterprise plans[m[K
+[K
+  2. Sign in with Device Code[K[2m
+     Sign in from another device with a one-time code[22m[K
+[K
+  3. Provide your own API key[K[2m
+     Pay for what you use[22m[K
+[K[2m
+  Press enter to continue[22m[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K[?25l[120C[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[?2026h[?2026l[3;3HPreparing device code login[K[4;2H[K[2m
+  Requesting a one-time code...[22m
+[K[2m
+  Press esc to cancel[22m[K[9;2H[K
+[K[12;2H[K
+[K[15;1H[K[120C[?2026h[?2026l[?2026h[?2026l[?2026h[3;3HFinish signing in via[1Cy[1Cur browser[5;1H  1. Open this link in your browser[1Cand[1Csign[1Cin[7;1H  [38;5;6m]8;id=6424-1;https://auth.openai.com/codex/device\[4mhttps://auth.openai.com/codex/device[m]8;;\[9;3H2.[1CEnter[1Cthis[1Cone-time[1Ccode[1Cafter[1Cyou[1Care[1Csigned[1Cin[1C(expires[1Cin[1C15[1Cminutes)[38;5;6m[1m[11;3HPDDW-Y2A80[m[2m[13;1H  Continue only if you started this login in Codex. If a website or another person gave you this code, cancel.[15;1H  Press esc to cancel[?2026l[22m[?2026h[?2026l[5;3HIf[1Cth[1C link doesn't open aut[1Cmatic[1Clly, open the[1Cfollowing[1Clink[1Cto[1Cauthenticate:[38;5;6m]8;id=6424-2;https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback&scope=openid%20profile%20email%20offline_access%20api.connectors.read%20api.connectors.invoke&code_challenge=BXVKw5qUTZLNYmBts4_doMysukazosBfMaq0E4SUpyw&code_challenge_method=S256&id_token_add_organizations=true&codex_cli_simplified_flow=true&state=6HlQM5QI9r3CmmhaMINmpQ2LT3cIzqoW4fhZXdm2KZ4&originator=codex-tui\[4m[7;3Hhttps://auth.openai.com/oauth/authorize?response_type=code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback&scope=openid%20profile%20email%20offline_access%20api.connectors.read%20api.connectors.invoke&code_challenge=BXVKw5qUTZLNYmBts4_doMysukazosBfMaq0E4SUpyw&code_challenge_method=S256&id_token_add_organizations=true&codex_cli_simplified_flow=true&state=6HlQM5QI9r3CmmhaMINmpQ2LT3cIzqoW4fhZXdm2KZ4&originator=codex-tui[m]8;;\[11;2H[K[12;3HOn[1Ca[1Cremote[1Cor[1Cheadless[1Cmachine?[1CPress[2m[1Cesc[22m[1Cand[1Cchoose[38;5;6m[1CSign in with Device Code[m.
+[K[2m
+  Press esc to cancel[22m
+[K[120C

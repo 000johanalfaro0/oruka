@@ -1,0 +1,36 @@
+[6n[?9001h[?1004h[m]0;C:\Users\jomor\.local\bin\claude.exe[?25h]0;claude[?25l[?2004h[?2031h[?1004h[>0q[?u[>4m[?2031l[?2004l[?2004h[?2031h[?1004h[?1049h[2J[?1000h[?1002h[?1003h[?1006h[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K[120C]0;✳ Claude Code[38;2;215;119;87m[2;1H ▐[48;2;0;0;0m▛███▛█[m[1m[3CClaude Code[38;2;153;153;153m[22m[1Cv2.1.278[38;2;215;119;87m
+▝▜[48;2;0;0;0m█████[49m█▀[38;2;153;153;153m[2CSonnet 5 · Claude Pro[38;2;215;119;87m
+  ▝▝ ▝▝  [38;2;153;153;153m[2C~\Desktop\oruka-captura-descartable[7;1H●[1Cecc: hooks.json: unknown keys "description" in hooks.PreToolUse[0], "id" in hooks.PreToolUse[0], "description"[8;3Hin hooks.PreToolUse[1], "id" in hooks.PreToolUse[1], "description" in hooks.PreToolUse[2] and 37 more ignored[25;103H● high · /effort[38;2;136;136;136m
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[m❯ [38;2;136;136;136m
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[38;2;255;193;7m[29;3H⚠ Transcript saving is off — inherited CLAUDE_CODE_CHILD_SESSION marker [38;2;153;153;153m· restart with CLAUDE_CODE_FORCE_SESSION_PE…[38;2;255;107;128m[30;3H⏵⏵ bypass permissions on [38;2;153;153;153m(shift+tab to cycle)[27;3H[?25h[m[>0q[?25l[38;2;153;153;153m[10;1H●[1Cagents-md: no CLAUDE.md found; AGENTS.md loaded: C:\Users\jomor\.claude\AGENTS.md[27;3H[?25h[m[?1000h[?1002h[?1003h[?1006h[?25l[38;2;153;153;153m[24;103H● high · /effort[38;2;136;136;136m
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[m❯ Abre hola.txt en esta carpeta, cambia la palabra mundo por tierra, y guarda el archivo.                               
+[K[2C[?25h[?25l[24;103H[K[27;3H[?25h
