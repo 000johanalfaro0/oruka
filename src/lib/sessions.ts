@@ -1,5 +1,7 @@
 import { storeGet, storeSet } from './store'
 
+export { toPreview } from './vistaPrevia'
+
 /**
  * Registro de sesiones recientes, para el panel de Sesiones.
  *
@@ -29,7 +31,6 @@ export interface SessionEntry {
 
 const STORAGE_KEY = 'oruka.sessions'
 const MAX_ENTRIES = 50
-const PREVIEW_MAX_CHARS = 200
 
 export async function loadSessions(): Promise<SessionEntry[]> {
   try {
@@ -53,12 +54,6 @@ export async function touchSession(
   const sinEsta = list.filter((s) => s.id !== entry.id)
   const nueva: SessionEntry = { ...entry, lastOutputPreview: previa?.lastOutputPreview ?? '' }
   await saveSessions([nueva, ...sinEsta].slice(0, MAX_ENTRIES))
-}
-
-/** Recorta un fragmento de terminal a una sola linea, para la vista previa. */
-export function toPreview(texto: string): string {
-  const plano = texto.replace(/\s+/g, ' ').trim()
-  return plano.length > PREVIEW_MAX_CHARS ? plano.slice(-PREVIEW_MAX_CHARS) : plano
 }
 
 /** Guarda la vista previa final de una sesion, sin tocar el resto. */
