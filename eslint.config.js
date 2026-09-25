@@ -6,7 +6,7 @@ import globals from 'globals'
  * Modulos conocidos. La frontera se genera desde esta lista: cada modulo tiene
  * prohibido importar a los demas, tanto por alias como por ruta relativa.
  */
-const MODULES = ['workspace', 'github', 'ideas', 'settings']
+const MODULES = ['workspace', 'github', 'ideas', 'settings', 'sessions', 'mobile', 'bitacora']
 
 const CROSS_IMPORT_MESSAGE =
   'Los modulos no se importan entre si. Usa el bus (@/shell/bus) para pedirle algo a otro modulo.'
